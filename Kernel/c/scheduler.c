@@ -65,29 +65,33 @@ void scheduler_remove(PCB* p){
 }
 
 /* 
-** Elegir el siguiente proceso READY usando round-robin. Solo elige procesos
-** en estado READY (excluye explicitamente al RUNNING actual; debe ser marcado
-** como READY antes de llamar). Si no hay nadie listo, devuelve NULL. 
+** Elegir el siguiente proceso READY usando round-robin con preferencia
+** a foreground. Dos pasadas: primero busca READY con foreground=1, si no
+** encuentra ninguno busca cualquier READY (incluye background).
 */
 PCB* scheduler_next_ready(void){
     if(queue_size == 0){
-        /* No hay procesos listos. */
         return NULL;
     }
 
+    /* Pasada 1: preferir foreground */
     for(int i = 0; i < queue_size; i++){
-        /* Avanzo de forma circular. */
         queue_idx = (queue_idx + 1) % queue_size;
-
         PCB* c = run_queue[queue_idx];
-
-        if(c->state == PROCESS_READY){
-            /* Retorna el primer proceso READY encontrado. */
+        if(c->state == PROCESS_READY && c->foreground){
             return c;
         }
     }
 
-    /* No se encontró ningún proceso READY. */
+    /* Pasada 2: fallback a cualquier READY */
+    for(int i = 0; i < queue_size; i++){
+        queue_idx = (queue_idx + 1) % queue_size;
+        PCB* c = run_queue[queue_idx];
+        if(c->state == PROCESS_READY){
+            return c;
+        }
+    }
+
     return NULL;
 }
 

@@ -105,3 +105,8 @@ void test_sync_cmd(void) {
     char *argv[2] = {buf, p};
     test_sync_internal(2, argv);
 }
+
+/* Entry point para ser spawneado como proceso hijo */
+int64_t test_sync_entry(int argc, char *argv[]) {
+    return test_sync_internal((uint64_t)argc, argv);
+}

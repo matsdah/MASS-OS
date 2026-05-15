@@ -79,3 +79,8 @@ void test_prio_cmd(void) {
     char *argv[1] = {(char *)args};
     test_prio_internal(1, argv);
 }
+
+/* Entry point para ser spawneado como proceso hijo */
+int64_t test_prio_entry(int argc, char *argv[]) {
+    return test_prio_internal((uint64_t)argc, argv);
+}

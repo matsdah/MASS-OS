@@ -46,17 +46,18 @@ uint64_t sys_write(uint64_t fd, const char * buff, uint64_t count){
     return count;
 }
 
-// sys_read: si no hay tecla disponible, bloquea el proceso actual y cede CPU.
-// Cuando el teclado despierte al proceso, userland reintentara la llamada.
+// sys_read: solo el proceso foreground puede leer del teclado.
+// Si no es foreground o no hay tecla, retorna 0.
 uint64_t sys_read(char * buff, uint64_t count){
+    PCB *cur = process_current();
+    if(cur == NULL || !cur->foreground){
+        return 0;  /* Solo foreground puede leer */
+    }
     uint64_t n = readKeyBuff(buff, count);
     if (n == 0) {
-        PCB *cur = process_current();
-        if (cur != NULL) {
-            kbd_set_waiting(cur);
-            cur->state = PROCESS_BLOCKED;
-            force_switch = 1;
-        }
+        kbd_set_waiting(cur);
+        cur->state = PROCESS_BLOCKED;
+        force_switch = 1;
     }
     return n;
 }

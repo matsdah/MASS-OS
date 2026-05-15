@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include "../c/include/userlib.h"
 #include "../c/include/shell.h"
+#include "../c/include/syscall.h"
 #include "include/test_util.h"
 
 static Command commands[] = {
@@ -348,10 +349,10 @@ void help(){
     shellPrintString("bmCPU     ->   benchmark de CPU.\n");
     shellPrintString("bmMEM     ->   benchmark de MEM.\n");
     shellPrintString("bmKEY     ->   benchmark de teclado.\n");
-    shellPrintString("test_mm <max_memory>      ->   test del memory manager (loop infinito).\n");
-    shellPrintString("test_processes <max>      ->   test de procesos (loop infinito).\n");
-    shellPrintString("test_prio <target>        ->   test de prioridades (3 fases, termina solo).\n");
-    shellPrintString("test_sync <n> <use_sem>   ->   test de sincronizacion con semaforos.\n");
+    shellPrintString("test_mm <max> [&]         ->   test memory manager (foreground/background)\n");
+    shellPrintString("test_processes <max> [&]  ->   test procesos (foreground/background)\n");
+    shellPrintString("test_prio <target> [&]    ->   test prioridades (foreground/background)\n");
+    shellPrintString("test_sync <n> <sem> [&]   ->   test sincronizacion (foreground/background)\n");
     shellPrintString("ps                        ->   lista de procesos activos.\n");
 }
 
@@ -512,38 +513,100 @@ char getchar(){
     return c;
 }
 
-// Busca y ejecuta el comando ingresado. Si el comando tiene argumentos
-// separados por espacio (e.g. "test_proc 5"), los expone via cmd_args().
-void processLine(char * buff, uint32_t * history_len){
+/* Lista de comandos que se spawnean como procesos hijos en vez de
+   ejecutarse in-process dentro de la shell. */
+static int is_child_command(const char *name){
+    static const char *child_cmds[] = {
+        "test_mm", "test_processes", "test_prio", "test_sync", NULL
+    };
+    for(int i = 0; child_cmds[i]; i++)
+        if(strcmp(name, child_cmds[i]) == 0)
+            return 1;
+    return 0;
+}
+
+/* Copia tokenizada de cmd_args en argv[]. Retorna argc. */
+static int parse_args(char *src, char **argv, int max_argv){
+    int argc = 0;
+    while(src && *src && argc < max_argv){
+        while(*src == ' ') src++;
+        if(*src == '\0') break;
+        argv[argc++] = src;
+        while(*src && *src != ' ') src++;
+        if(*src == ' '){
+            *src = '\0';
+            src++;
+        }
+    }
+    return argc;
+}
+
+/* Busca y ejecuta el comando ingresado. Los tests (test_mm, test_processes,
+   test_prio, test_sync) se spawnean como procesos hijos. Si el comando
+   termina con '&' se ejecuta en background; sino en foreground con waitpid. */
+void processLine(char *buff, uint32_t *history_len){
     (void)history_len;
-    if(strlen(buff) == 0){
+    if(strlen(buff) == 0)
         return;
+
+    /* Detectar '&' al final (background) */
+    int bg = 0;
+    size_t len = strlen(buff);
+    if(len > 0 && buff[len - 1] == '&'){
+        bg = 1;
+        buff[len - 1] = '\0';
+        len--;
+        while(len > 0 && buff[len - 1] == ' '){
+            buff[--len] = '\0';
+        }
     }
 
-    /* Cortar al primer espacio: nombre del comando | resto = argumentos. */
+    /* Separar nombre del comando y argumentos */
     g_cmd_args = 0;
     for(size_t i = 0; buff[i]; i++){
         if(buff[i] == ' '){
             buff[i] = '\0';
             size_t j = i + 1;
             while(buff[j] == ' ') j++;
-            if(buff[j] != '\0'){
+            if(buff[j] != '\0')
                 g_cmd_args = &buff[j];
-            }
             break;
         }
     }
 
-    for(int i = 0; commands[i].name != 0; i++){
-        if(strcmp(buff, commands[i].name) == 0){
-            commands[i].function();
-            g_cmd_args = 0;
-            return;
-        }
-    }
+    /* ¿Es un comando que se spawnea como proceso hijo? */
+    if(is_child_command(buff)){
+        char *argv[16] = {0};
+        int argc = 0;
+        if(g_cmd_args)
+            argc = parse_args((char *)g_cmd_args, argv, 15);
 
+        int64_t pid = my_create_process_fg(buff, (uint64_t)argc, argv, bg ? 0 : 1);
+        if(pid < 0){
+            shellPrintString("Error creando proceso\n");
+        } else if(!bg){
+            /* Foreground: esperar a que termine */
+            my_wait(pid);
+        } else {
+            /* Background: imprimir PID */
+            shellPrintString("[");
+            char tmp[16];
+            num_to_str((uint64_t)pid, tmp, 10);
+            shellPrintString(tmp);
+            shellPrintString("]\n");
+        }
+    } else {
+        /* Built-in: ejecutar in-process */
+        for(int i = 0; commands[i].name != 0; i++){
+            if(strcmp(buff, commands[i].name) == 0){
+                commands[i].function();
+                g_cmd_args = 0;
+                return;
+            }
+        }
+        shellPrintString("Comando no reconocido! Escriba 'help' para ver los comandos disponibles.\n");
+    }
     g_cmd_args = 0;
-    shellPrintString("Comando no reconocido! Escriba 'help' para ver los comandos disponibles.\n");
 }
 
 static const char *state_names[] = {"FREE", "READY", "RUNNING", "BLOCKED", "ZOMBIE"};

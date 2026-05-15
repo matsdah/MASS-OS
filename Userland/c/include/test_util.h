@@ -21,6 +21,12 @@ void     test_sync_cmd(void);
 void     zero_to_max(int argc, char *argv[]);
 void     my_process_inc(int argc, char *argv[]);
 
+/* Entry points para spawneados como procesos hijos */
+int64_t  test_mm_entry(int argc, char *argv[]);
+int64_t  test_processes_entry(int argc, char *argv[]);
+int64_t  test_prio_entry(int argc, char *argv[]);
+int64_t  test_sync_entry(int argc, char *argv[]);
+
 /* Provisto por _loader.c */
 void    *memset(void *s, int32_t c, uint64_t n);
 

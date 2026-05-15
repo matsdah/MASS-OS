@@ -21,6 +21,10 @@ static ProcEntry registry[] = {
     {"endless_loop_print", (void *)endless_loop_print},
     {"zero_to_max",        (void *)zero_to_max},
     {"my_process_inc",     (void *)my_process_inc},
+    {"test_mm",            (void *)test_mm_entry},
+    {"test_processes",     (void *)test_processes_entry},
+    {"test_prio",          (void *)test_prio_entry},
+    {"test_sync",          (void *)test_sync_entry},
     {0, 0}
 };
 
@@ -31,10 +35,14 @@ int64_t my_getpid(void) {
 }
 
 int64_t my_create_process(char *name, uint64_t argc, char *argv[]) {
+    return my_create_process_fg(name, argc, argv, 0);
+}
+
+int64_t my_create_process_fg(char *name, uint64_t argc, char *argv[], uint8_t fg) {
     int i;
     for (i = 0; registry[i].name; i++) {
         if (str_eq(registry[i].name, name))
-            return sys_create_process(name, registry[i].fn, (int)argc, argv, 0);
+            return sys_create_process(name, registry[i].fn, (int)argc, argv, fg);
     }
     return -1;
 }

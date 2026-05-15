@@ -68,3 +68,8 @@ void test_mm_cmd(void) {
     char *argv[1] = {(char *)args};
     test_mm_internal(1, argv);
 }
+
+/* Entry point para ser spawneado como proceso hijo */
+int64_t test_mm_entry(int argc, char *argv[]) {
+    return test_mm_internal((uint64_t)argc, argv);
+}

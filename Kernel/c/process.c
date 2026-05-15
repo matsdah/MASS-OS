@@ -147,9 +147,43 @@ int process_create(const char *name, ProcessEntry entry, int argc, char **argv, 
         return -1;
     }
 
+    /* Copiar argv y sus strings a memoria kernel persistente.
+    ** argv original puede apuntar al stack del padre (shell), que se
+    ** sobreescribe cuando processLine retorna. */
+    char **argv_copy = NULL;
+    if(argv != NULL && argc > 0){
+        /* Calcular tamaño total: array de punteros + strings */
+        uint64_t total_size = sizeof(char *) * (uint64_t)(argc + 1);
+        for(int i = 0; i < argc; i++){
+            if(argv[i] != NULL){
+                total_size += (uint64_t)str_len(argv[i]) + 1;
+            }
+        }
+        
+        argv_copy = (char **)mm_malloc_kernel(total_size);
+        if(argv_copy == NULL){
+            mm_free(p->stack_base);
+            return -1;
+        }
+        
+        /* Copiar strings al final del bloque, luego armar punteros */
+        uint8_t *str_pool = (uint8_t *)argv_copy + sizeof(char *) * (uint64_t)(argc + 1);
+        for(int i = 0; i < argc; i++){
+            if(argv[i] != NULL){
+                int len = str_len(argv[i]) + 1;
+                memcpy(str_pool, argv[i], (uint64_t)len);
+                argv_copy[i] = (char *)str_pool;
+                str_pool += (uint64_t)len;
+            } else {
+                argv_copy[i] = NULL;
+            }
+        }
+        argv_copy[argc] = NULL;
+    }
+
     /* Construir frame inicial. */ 
     void* stack_top = (void*)((uint8_t *)p->stack_base + STACK_SIZE);
-    p->rsp = build_initial_stack(stack_top, entry, argc, argv);
+    p->rsp = build_initial_stack(stack_top, entry, argc, (char **)argv_copy);
 
     /* Rellenar PCB */ 
     p->pid = ++next_pid;
@@ -162,7 +196,7 @@ int process_create(const char *name, ProcessEntry entry, int argc, char **argv, 
     p->parent_pid = ((current_process != NULL) ? (current_process->pid) : 0);
     p->waiting_for = 0;     /* Indica si se esta esperando a otro proceso. Sirve para que el scheduler sepa cuando desbloquearlo. */
     p->argc = argc;         
-    p->argv = argv;
+    p->argv = argv_copy;    /* Memoria kernel (se libera en process_exit/kill) */
     p->retval = 0; 
 
     str_copy(p->name, name, MAX_NAME_LEN);
@@ -199,9 +233,13 @@ void process_exit(int retval){
         parent->state = PROCESS_READY;
     }
 
-    /* Liberar stack del proceso que muere. */ 
+    /* Liberar stack y argv del proceso que muere. */ 
     mm_free(current_process->stack_base);
     current_process->stack_base = NULL;
+    if(current_process->argv != NULL){
+        mm_free(current_process->argv);
+        current_process->argv = NULL;
+    }
     current_process->rsp = NULL;
 
     force_switch = 1;   /* Ceder CPU en el proximo retorno de syscall. */
@@ -230,6 +268,10 @@ void process_kill(uint64_t pid){
         current_process->state = PROCESS_ZOMBIE;
         mm_free(current_process->stack_base);
         current_process->stack_base = NULL;
+        if(current_process->argv != NULL){
+            mm_free(current_process->argv);
+            current_process->argv = NULL;
+        }
         current_process->rsp = NULL;
         /* Fuerza el switch para seguir con otro proceso. */
         force_switch = 1;       
@@ -242,6 +284,10 @@ void process_kill(uint64_t pid){
         if(p->stack_base != NULL){
             mm_free(p->stack_base);
             p->stack_base = NULL;
+        }
+        if(p->argv != NULL){
+            mm_free(p->argv);
+            p->argv = NULL;
         }
         p->state = PROCESS_FREE;
         p->pid = 0;
