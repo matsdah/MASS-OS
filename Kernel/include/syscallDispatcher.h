@@ -46,4 +46,9 @@ int64_t  sys_sem_wait(const char *name);
 int64_t  sys_sem_post(const char *name);
 int64_t  sys_sem_close(const char *name);
 
+// Syscalls 33-35 (pipes)
+int64_t  sys_pipe(uint64_t fd_array);
+int64_t  sys_dup2(uint64_t old_fd, uint64_t new_fd);
+int64_t  sys_close(uint64_t fd);
+
 #endif

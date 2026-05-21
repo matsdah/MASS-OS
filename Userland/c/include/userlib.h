@@ -95,6 +95,9 @@ int64_t  sys_sem_open(const char *name, uint64_t initial_value);
 int64_t  sys_sem_wait(const char *name);
 int64_t  sys_sem_post(const char *name);
 int64_t  sys_sem_close(const char *name);
+int64_t  sys_pipe(int fds[2]);
+int64_t  sys_dup2(uint64_t old_fd, uint64_t new_fd);
+int64_t  sys_close(uint64_t fd);
 
 // ─── Utilitarios ─────────────────────────────────────────────────────────────
 uint64_t putchar(char c);

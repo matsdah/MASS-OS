@@ -10,6 +10,7 @@
 #include "scheduler.h"
 #include "semaphore.h"
 #include "fd.h"
+#include "pipe.h"
 
 // ─── Syscalls de memoria (16-18) ──────────────────────────────────────────────
 
@@ -172,6 +173,78 @@ int64_t sys_sem_close(const char *name) {
     return sem_close(name);
 }
 
+// ─── Syscalls de pipes (33-35) ────────────────────────────────────────────────
+
+int64_t sys_pipe(uint64_t fd_array){
+    if(fd_array == 0){
+        return -1;
+    }
+
+    Pipe *p = pipe_alloc();
+    if(p == NULL){
+        return -1;
+    }
+
+    int read_fd = fd_create_pipe(p, 0);
+    if(read_fd < 0){
+        pipe_close_read(p);
+        return -1;
+    }
+
+    int write_fd = fd_create_pipe(p, 1);
+    if(write_fd < 0){
+        fd_decref((uint64_t)read_fd);
+        return -1;
+    }
+
+    int *fds = (int *)fd_array;
+    fds[0] = read_fd;
+    fds[1] = write_fd;
+    return 0;
+}
+
+int64_t sys_dup2(uint64_t old_fd, uint64_t new_fd){
+    if(new_fd > 1){
+        return -1;
+    }
+
+    FD *d = fd_get(old_fd);
+    if(d == NULL){
+        return -1;
+    }
+
+    PCB *cur = process_current();
+    if(cur == NULL){
+        return -1;
+    }
+
+    if(cur->fd[new_fd] == (int)old_fd){
+        return (int64_t)old_fd;
+    }
+
+    if(cur->fd[new_fd] >= 0){
+        fd_decref((uint64_t)cur->fd[new_fd]);
+    }
+
+    cur->fd[new_fd] = (int)old_fd;
+    fd_incref(old_fd);
+    return (int64_t)old_fd;
+}
+
+int64_t sys_close(uint64_t fd){
+    PCB *cur = process_current();
+    if(cur != NULL){
+        if(cur->fd[0] == (int)fd){
+            cur->fd[0] = -1;
+        }
+        if(cur->fd[1] == (int)fd){
+            cur->fd[1] = -1;
+        }
+    }
+    fd_decref(fd);
+    return 0;
+}
+
 // ─── Tabla de syscalls ────────────────────────────────────────────────────────
 
 void * syscalls[CANT_SYS] = {
@@ -208,4 +281,7 @@ void * syscalls[CANT_SYS] = {
     &sys_sem_wait,          // 30
     &sys_sem_post,          // 31
     &sys_sem_close,         // 32
+    &sys_pipe,              // 33
+    &sys_dup2,              // 34
+    &sys_close,             // 35
 };
