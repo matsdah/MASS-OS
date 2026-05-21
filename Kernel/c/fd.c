@@ -4,10 +4,23 @@
 #include "keyboardDriver.h"
 #include "videoDriver.h"
 #include "scheduler.h"
+#include "pipe.h"
 
 #define MAX_FDS (MAX_PROCESSES * 2 + 2)
 
 static FD fd_table[MAX_FDS];
+
+static int fd_alloc(FDType type, void *data){
+    for(uint64_t i = 0; i < MAX_FDS; i++){
+        if(fd_table[i].type == FD_NONE){
+            fd_table[i].type = type;
+            fd_table[i].data = data;
+            fd_table[i].refcount = 0;
+            return (int)i;
+        }
+    }
+    return -1;
+}
 
 void fd_init(void){
     for(uint64_t i = 0; i < MAX_FDS; i++){
@@ -36,6 +49,11 @@ void fd_incref(uint64_t fd){
         return;
     }
     d->refcount++;
+    if(d->type == FD_PIPE_READ){
+        pipe_open_read((Pipe *)d->data);
+    } else if(d->type == FD_PIPE_WRITE){
+        pipe_open_write((Pipe *)d->data);
+    }
 }
 
 void fd_decref(uint64_t fd){
@@ -45,6 +63,11 @@ void fd_decref(uint64_t fd){
     }
     if(d->refcount > 0){
         d->refcount--;
+    }
+    if(d->type == FD_PIPE_READ){
+        pipe_close_read((Pipe *)d->data);
+    } else if(d->type == FD_PIPE_WRITE){
+        pipe_close_write((Pipe *)d->data);
     }
     if(d->refcount == 0 && d->type != FD_TERMINAL){
         d->type = FD_NONE;
@@ -70,6 +93,8 @@ uint64_t fd_read(FD *d, char *buf, uint64_t count, struct PCB *cur){
             }
             return n;
         }
+        case FD_PIPE_READ:
+            return pipe_read((Pipe *)d->data, buf, count);
         default:
             return 0;
     }
@@ -89,7 +114,23 @@ uint64_t fd_write(FD *d, const char *buf, uint64_t count, struct PCB *cur){
             }
             return count;
         }
+        case FD_PIPE_WRITE:
+            return pipe_write((Pipe *)d->data, buf, count);
         default:
             return 0;
     }
+}
+
+int fd_create_pipe(struct Pipe *p, int write_end){
+    if(p == NULL){
+        return -1;
+    }
+
+    FDType type = write_end ? FD_PIPE_WRITE : FD_PIPE_READ;
+    int fd = fd_alloc(type, p);
+    if(fd < 0){
+        return -1;
+    }
+    fd_incref((uint64_t)fd);
+    return fd;
 }
