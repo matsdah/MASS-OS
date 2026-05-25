@@ -34,6 +34,7 @@ test_mm <max_bytes>   # infinite loop: alloc/free random blocks, checks no overl
 test_proc <max_procs> # infinite loop: creates, blocks, unblocks, kills dummy procs randomly
 test_prio <target>    # 3 procs incrementing vars; first equal prio, then different prios
 test_sync <pairs> <increments> <use_sem>  # readers/writers race; result must be 0 with sems
+test_named_pipe       # named pipe IPC test (writer/reader)
 ps                    # list processes
 bmFPS / bmCPU / bmMEM / bmKEY  # benchmarks
 ```
@@ -89,18 +90,18 @@ Both expose `mm_init / mm_malloc / mm_malloc_kernel / mm_free / mm_status`. The 
 
 **Atomicity requirement:** semaphore value updates must use an atomic instruction (`xchg` or `lock cmpxchg`) to avoid race conditions.
 
-### Pipes (IPC) — PENDING IMPLEMENTATION
+### Pipes (IPC) — IMPLEMENTED
 
-Pipes are **unidirectional** and **blocking** (both reads and writes block when empty/full). The kernel must support:
+Pipes are **unidirectional** and **blocking** (both reads and writes block when empty/full). The kernel supports:
 
 - Anonymous pipes for related processes and **named pipes** so unrelated processes can share them by agreeing on an identifier a priori.
-- A pipe is a circular buffer in kernel memory with read/write ends, synchronized internally (semaphores are a natural fit here).
+- A circular buffer in kernel memory with read/write ends and wait queues for readers/writers.
 - **EOF semantics:** when the write end is closed, readers receive EOF.
 - **Transparent I/O:** processes must not need code changes to read/write a pipe vs. the terminal. This is enforced by the file-descriptor abstraction:
   - Each PCB has `fd[2]` (stdin=0, stdout=1).
   - `sys_read` / `sys_write` must consult the current process's FD table and dispatch to terminal or pipe accordingly.
 
-**New syscalls needed for pipes:**
+**Pipe syscalls:**
 - `sys_pipe(fd_array)` — create anonymous pipe, return [read_fd, write_fd].
 - `sys_pipe_open(name)` — open named pipe.
 - `sys_dup2(old_fd, new_fd)` — redirect FDs (used by shell when connecting pipes).
@@ -112,11 +113,11 @@ Pipes are **unidirectional** and **blocking** (both reads and writes block when 
 - 0–18: I/O, video, memory (`sys_write`, `sys_read`, `sys_malloc`, `sys_free`, `sys_mem_status`, …)
 - 19–28: processes (`sys_create_process`, `sys_exit`, `sys_getpid`, `sys_ps`, `sys_kill`, `sys_nice`, `sys_block`, `sys_unblock`, `sys_yield`, `sys_waitpid`)
 - 29–32: semaphores (`sys_sem_open`, `sys_sem_wait`, `sys_sem_post`, `sys_sem_close`)
-- 33+: **pipes** (to be added: `sys_pipe`, `sys_pipe_open`, `sys_dup2`, `sys_close`)
+- 33+: **pipes** (`sys_pipe`, `sys_pipe_open`, `sys_dup2`, `sys_close`)
 
 Dispatched via `int 0x80` through `syscalls[]` table in `syscallDispatcher.c`. Userland calls them via `Userland/asm/userlib.asm` wrappers and `Userland/c/userlib.c` C wrappers. Adding a syscall requires: bumping `CANT_SYS`, writing the `sys_*` function, adding it to the dispatcher table, and exposing a wrapper in `userlib`.
 
-**Important:** `sys_read` is non-blocking at the low level — it returns 0 immediately if no key is ready. The `getchar()` wrapper in `userlib.c` busy-waits (yields between attempts) to provide blocking semantics. When pipes are added, `sys_read` must block (not busy-wait) when the pipe is empty.
+**Important:** `sys_read` blocks when no data is available (terminal or pipe). The process is marked `BLOCKED` and a context switch is forced; it is unblocked when input arrives or the pipe state changes.
 
 ### Userland linkage
 
@@ -364,10 +365,10 @@ export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quo
 | Named semaphores | ✅ Done |
 | Syscalls: memory, process, semaphore | ✅ Done |
 | Keyboard & video drivers | ✅ Done |
-| **Pipes (IPC)** | ❌ Pending |
-| **FD abstraction (transparent I/O)** | ❌ Pending |
+| **Pipes (IPC)** | ✅ Done |
+| **FD abstraction (transparent I/O)** | ✅ Done |
 | **Shell: `&` background support** | ❌ Pending |
 | **Shell: `\|` pipe support** | ❌ Pending |
 | **Shell: Ctrl+C / Ctrl+D** | ❌ Pending |
 | **Commands: `cat`, `wc`, `filter`, `mvar`** | ❌ Pending |
-| **Tests as separate processes** | ❌ Pending |
+| **Tests as separate processes** | ✅ Done |

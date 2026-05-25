@@ -2,7 +2,7 @@
 
 ## Estado actual (actualizado)
 
-Ya se implementaron: kernel 64-bit, IDT/IRQs, driver de video (framebuffer VBE), driver de teclado, driver de sonido (PIT), timer, syscalls via `int 0x80`, **memory manager (FF y Buddy)**, **procesos (PCBs, tabla, stacks, prioridades, estados)**, **context switch en ASM**, **scheduler Round-Robin con prioridades**, **semaforos nombrados**, y una shell basica. El sistema ya es **multi-tasking preemptivo**. Lo que resta es **IPC (pipes)**, **FD abstraction**, **shell con `&`/`|`/Ctrl+C/Ctrl+D** y los **tests como procesos separados**.
+Ya se implementaron: kernel 64-bit, IDT/IRQs, driver de video (framebuffer VBE), driver de teclado, driver de sonido (PIT), timer, syscalls via `int 0x80`, **memory manager (FF y Buddy)**, **procesos (PCBs, tabla, stacks, prioridades, estados)**, **context switch en ASM**, **scheduler Round-Robin con prioridades**, **semaforos nombrados**, **pipes (anonimos y con nombre) + abstraccion de FDs**, y una shell basica. El sistema ya es **multi-tasking preemptivo**. Lo que resta es la **shell con `&`/`|`/Ctrl+C/Ctrl+D**, los **comandos de userland (cat/wc/filter/mvar)** y la **verificacion final + README**.
 
 ---
 
@@ -54,7 +54,7 @@ Ya se implementaron: kernel 64-bit, IDT/IRQs, driver de video (framebuffer VBE),
 
 ## Paso 2 - Procesos, Context Switching y Scheduler
 
-**Estado: COMPLETADO (excepto tests como procesos separados)**
+**Estado: COMPLETADO**
 
 ### 2.1 PCB (Process Control Block)
 - [x] Estructura con: PID, nombre, prioridad, estado (READY/RUNNING/BLOCKED/ZOMBIE).
@@ -104,7 +104,7 @@ Ya se implementaron: kernel 64-bit, IDT/IRQs, driver de video (framebuffer VBE),
 
 ## Paso 3 - Sincronizacion (Semaforos)
 
-**Estado: COMPLETADO (excepto test como proceso separado)**
+**Estado: COMPLETADO (verificacion pendiente)**
 
 ### 3.1 Semaforos con nombre
 - [x] Estructura: valor, cola circular de PIDs bloqueados, nombre.
@@ -130,7 +130,7 @@ Ya se implementaron: kernel 64-bit, IDT/IRQs, driver de video (framebuffer VBE),
 
 ## Paso 4 - Inter Process Communication (Pipes)
 
-**Estado: PENDIENTE — bloque critico**
+**Estado: COMPLETADO**
 
 **Dependencias:** Paso 2 y Paso 3 completados (ya lo estan).
 **Referencia:** Ver ejemplo en `https://github.com/alejoaquili/ITBA-72.11-SO/tree/main/examples/producer-consumer/` para patron de sincronizacion bloqueante con semaforos.
@@ -160,12 +160,12 @@ Ya se implementaron: kernel 64-bit, IDT/IRQs, driver de video (framebuffer VBE),
 - [x] **Ningun proceso necesita saber si lee/escribe de un pipe o de la terminal** — la transparencia es un requisito del enunciado.
 
 ### 4.3 Pipes con nombre
-- [ ] Permitir que procesos no relacionados compartan un pipe acordando un string identificador.
-- [ ] `sys_pipe_open(name)` crea si no existe, abre si ya existe.
+- [x] Permitir que procesos no relacionados compartan un pipe acordando un string identificador.
+- [x] `sys_pipe_open(name)` crea si no existe, abre si ya existe.
 
 ### 4.4 Syscalls de pipes
 - [x] `sys_pipe(fd_array[2])` — crea pipe anonimo, devuelve fd[0]=lector, fd[1]=escritor en el proceso que llama.
-- [ ] `sys_pipe_open(name)` — crea o abre pipe nombrado, devuelve fd de lectura y escritura.
+- [x] `sys_pipe_open(name)` — crea o abre pipe nombrado, devuelve fd de lectura y escritura.
 - [x] `sys_dup2(old_fd, new_fd)` — redirige un FD (usado por la shell para conectar pipes: `dup2(pipe_write, 1)` en el hijo-escritor, `dup2(pipe_read, 0)` en el hijo-lector).
 - [x] `sys_close(fd)` — cierra un file descriptor (decrementar contador de extremos del pipe).
 - [x] Wrappers en `Userland/asm/userlib.asm` y `Userland/c/userlib.c`.
@@ -273,9 +273,9 @@ Todos deben poder correrse en **foreground y background**. Son los mismos archiv
 [HECHO] Paso 4.1-4.2    Paso 5.2 (comandos simples: help, mem, ps, loop, kill, nice, block)
 (Pipes + FDs)            |
     |                |
-Paso 4.3         Paso 5.4 (tests como procesos — no necesitan pipes)
-(Named pipes +      |
- sys_pipe_open)     |
+ [HECHO] Paso 4.3   Paso 5.4 (tests como procesos — no necesitan pipes)
+ (Named pipes +       |
+  sys_pipe_open)      |
     |                |
     +-------+--------+
            |
@@ -287,6 +287,6 @@ Paso 4.3         Paso 5.4 (tests como procesos — no necesitan pipes)
 ```
 
 **Prioridad inmediata:**
-1. **Paso 4.3 (pipes con nombre + sys_pipe_open)** — necesario para IPC entre procesos no relacionados.
-2. **Paso 5.1 (shell con & | Ctrl+C | Ctrl+D)** — para demostrar foreground/background y manejo de señales.
-3. **Paso 5.3 (cat, wc, filter, mvar)** — depende de pipes funcionando en userland.
+1. **Paso 5.1 (shell con & | Ctrl+C | Ctrl+D)** — para demostrar foreground/background y manejo de señales.
+2. **Paso 5.3 (cat, wc, filter, mvar)** — depende de pipes funcionando en userland.
+3. **Paso 6 (verificacion + README)** — cierre de requisitos y entrega.

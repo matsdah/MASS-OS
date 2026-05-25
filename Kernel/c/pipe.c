@@ -305,9 +305,9 @@ uint64_t pipe_read(Pipe* p, char* buf, uint64_t count){
 
 /*
  * Escribe en el pipe con bloqueo.
- * - Si no hay lectores: en pipes nombrados puede bloquear hasta que aparezcan.
- * - Si el buffer esta lleno: bloquea al escritor.
- * - Si hay espacio: copia hasta 'count' o hasta llenar el buffer.
+ * Si no hay lectores: en pipes nombrados puede bloquear hasta que aparezcan.
+ * Si el buffer esta lleno: bloquea al escritor.
+ * Si hay espacio: copia hasta 'count' o hasta llenar el buffer.
  */
 uint64_t pipe_write(Pipe *p, const char *buf, uint64_t count){
     if(p == NULL || buf == NULL || count == 0){
@@ -319,27 +319,35 @@ uint64_t pipe_write(Pipe *p, const char *buf, uint64_t count){
             if(p->eof){
                 return 0;
             }
-            /* Sin lectores: encolar y bloquear escritor. */
-            PCB *cur = process_current();
+
+            PCB* cur = process_current();
             if(cur != NULL){
+                /* Encolar escritor. */
                 queue_push(p->wait_writers, &p->wait_w_tail, &p->wait_w_count, cur->pid);
+                /* Bloquear escritor. */
                 process_block(cur->pid);
             }
+
             return (uint64_t)-1;
         }
+
         return 0;
     }
 
+    /* Si el buffer esta lleno: bloquear escritor. */
     if(p->count >= PIPE_BUFFER_SIZE){
-        /* Buffer lleno: bloquear escritor. */
-        PCB *cur = process_current();
+        PCB* cur = process_current();
         if(cur != NULL){
+            /* Encolar escritor. */
             queue_push(p->wait_writers, &p->wait_w_tail, &p->wait_w_count, cur->pid);
+            /* Bloquear escritor. */
             process_block(cur->pid);
         }
+
         return (uint64_t)-1;
     }
 
+    /* Copiar datos al buffer. */
     uint64_t n = 0;
     uint64_t space = PIPE_BUFFER_SIZE - p->count;
     uint64_t to_write = (count < space) ? count : space;
