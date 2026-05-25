@@ -3,8 +3,10 @@
 #include "include/userlib.h"
 #include "include/shell.h"
 
+/* Número total de procesos a crear en la prueba. */
 #define TOTAL_PROCESSES 3
 
+/* Prioridades para los procesos. */
 #define LOWEST  1
 #define MEDIUM  3
 #define HIGHEST 5
@@ -13,70 +15,100 @@ static int64_t prio[TOTAL_PROCESSES] = {LOWEST, MEDIUM, HIGHEST};
 
 static uint64_t max_value = 0;
 
-void zero_to_max(int argc, char *argv[]) {
-    (void)argc; (void)argv;
-    uint64_t value = 0;
-    while (value++ != max_value)
-        ;
-    printf("PROCESS %d DONE!\n", (int)my_getpid());
+/* Obtiene la prioridad actual del proceso consultando la tabla de procesos. */
+static uint8_t get_current_priority(void){
+    static ProcessInfo buf[MAX_PROCESSES];
+    uint64_t count = sys_ps(buf, MAX_PROCESSES);
+    uint64_t pid = sys_getpid();
+    for(uint64_t i = 0; i < count; i++){
+        if(buf[i].pid == pid){
+            return buf[i].priority;
+        }
+    }
+    return 0;
 }
 
-static int64_t test_prio_internal(uint64_t argc, char *argv[]) {
+/* Función para incrementar un valor desde 0 hasta max_value. */
+void zero_to_max(int argc, char *argv[]){
+    (void)argc; 
+    (void)argv;
+    uint64_t value = 0;
+
+    while(value++ != max_value){
+        ;
+    }
+
+    uint8_t pr = get_current_priority();
+    printf("PROCESS %d DONE! PRIO: %d\n", (int)my_getpid(), (int)pr);
+}
+
+static int64_t test_prio_internal(uint64_t argc, char *argv[]){
     int64_t pids[TOTAL_PROCESSES];
-    char   *ztm_argv[] = {0};
+    char* ztm_argv[] = {0};
     uint64_t i;
 
-    if (argc != 1)
+    if(argc != 1){
         return -1;
+    }
 
-    if ((max_value = (uint64_t)satoi(argv[0])) == 0)
+    if((max_value = (uint64_t)satoi(argv[0])) == 0){
         return -1;
+    }
 
+    /* Crear procesos con la misma prioridad. */
     printf("SAME PRIORITY...\n");
 
-    for (i = 0; i < TOTAL_PROCESSES; i++)
+    for(i = 0; i < TOTAL_PROCESSES; i++){
         pids[i] = my_create_process("zero_to_max", 0, ztm_argv);
+    }
 
-    for (i = 0; i < TOTAL_PROCESSES; i++)
+    for(i = 0; i < TOTAL_PROCESSES; i++){
         my_wait(pids[i]);
+    }
 
+    /* Cambiar la prioridad de los procesos. */
     printf("SAME PRIORITY, THEN CHANGE IT...\n");
 
-    for (i = 0; i < TOTAL_PROCESSES; i++) {
+    for(i = 0; i < TOTAL_PROCESSES; i++){
+
         pids[i] = my_create_process("zero_to_max", 0, ztm_argv);
         my_nice((uint64_t)pids[i], (uint64_t)prio[i]);
         printf("  PROCESS %d NEW PRIORITY: %d\n", (int)pids[i], (int)prio[i]);
     }
 
-    for (i = 0; i < TOTAL_PROCESSES; i++)
+    for(i = 0; i < TOTAL_PROCESSES; i++){
         my_wait(pids[i]);
+    }
 
     printf("SAME PRIORITY, THEN CHANGE IT WHILE BLOCKED...\n");
 
-    for (i = 0; i < TOTAL_PROCESSES; i++) {
+    for(i = 0; i < TOTAL_PROCESSES; i++){
         pids[i] = my_create_process("zero_to_max", 0, ztm_argv);
         my_block((uint64_t)pids[i]);
         my_nice((uint64_t)pids[i], (uint64_t)prio[i]);
         printf("  PROCESS %d NEW PRIORITY: %d\n", (int)pids[i], (int)prio[i]);
     }
 
-    for (i = 0; i < TOTAL_PROCESSES; i++)
+    for(i = 0; i < TOTAL_PROCESSES; i++){
         my_unblock((uint64_t)pids[i]);
+    }
 
-    for (i = 0; i < TOTAL_PROCESSES; i++)
+    for(i = 0; i < TOTAL_PROCESSES; i++){
         my_wait(pids[i]);
+    }
 
     return 0;
 }
 
 /* Wrapper de shell: test_prio <max_value> */
 void test_prio_cmd(void) {
-    const char *args = cmd_args();
-    if (!args) {
+    const char* args = cmd_args();
+    if(!args){
         shellPrintString("uso: test_prio <max_value>\n");
         return;
     }
-    char *argv[1] = {(char *)args};
+
+    char* argv[1] = {(char *)args};
     test_prio_internal(1, argv);
 }
 
