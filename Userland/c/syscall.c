@@ -38,6 +38,7 @@ static ProcEntry registry[] = {
     {"mem", (void *)mem},
     {"kill", (void *)kill_cmd},
     {"nice", (void *)nice_cmd},
+    {"block", (void *)block_cmd},
     {0, 0}
 };
 

@@ -88,7 +88,7 @@ uint64_t sys_getpid(void);
 uint64_t sys_ps(ProcessInfo *buffer, uint64_t max_count);
 void     sys_kill(uint64_t pid);
 void     sys_nice(uint64_t pid, uint64_t new_priority);
-void     sys_block(uint64_t pid);
+int64_t  sys_block(uint64_t pid);
 void     sys_unblock(uint64_t pid);
 void     sys_yield(void);
 int64_t  sys_waitpid(uint64_t pid);

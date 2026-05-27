@@ -333,6 +333,7 @@ void help(){
     shellPrintString("mem                       ->   muestra estado de la memoria.\n");
     shellPrintString("kill <pid>                ->   termina el proceso indicado.\n");
     shellPrintString("nice <pid> <prio>         ->   cambia prioridad (1-5).\n");
+    shellPrintString("block <pid>               ->   alterna estado BLOCKED/READY.\n");
     shellPrintString("ps                        ->   lista de procesos activos.\n");
 }
 
@@ -499,7 +500,7 @@ char getchar(){
 static int is_child_command(const char *name){
     static const char *child_cmds[] = {
         "test_mm", "test_processes", "test_prio", "test_sync",
-        "np_writer", "np_reader", "mem", "kill", "nice", NULL
+        "np_writer", "np_reader", "mem", "kill", "nice", "block", NULL
     };
     for(int i = 0; child_cmds[i]; i++)
         if(strcmp(name, child_cmds[i]) == 0)

@@ -155,8 +155,16 @@ void sys_nice(uint64_t pid, uint64_t new_priority) {
     process_nice(pid, (uint8_t)new_priority);
 }
 
-void sys_block(uint64_t pid) {
+int64_t sys_block(uint64_t pid) {
+    PCB* p = process_get(pid);
+    if(p == NULL || p->state == PROCESS_FREE || p->state == PROCESS_ZOMBIE){
+        return -1;
+    }
+    if(p->state == PROCESS_BLOCKED && p->waiting_for != 0){
+        return -1;
+    }
     process_block(pid);
+    return 0;
 }
 
 void sys_unblock(uint64_t pid) {
