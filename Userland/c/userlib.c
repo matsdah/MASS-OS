@@ -337,6 +337,7 @@ void help(){
     shellPrintString("loop                      ->   imprime PID periodicamente.\n");
     shellPrintString("sh                        ->   nueva shell interactiva.\n");
     shellPrintString("cat                       ->   copia stdin a stdout.\n");
+    shellPrintString("wc                        ->   cuenta lineas, palabras y bytes de stdin.\n");
     shellPrintString("ps                        ->   lista de procesos activos.\n");
 }
 
@@ -503,7 +504,7 @@ char getchar(){
 static int is_child_command(const char *name){
     static const char *child_cmds[] = {
         "test_mm", "test_processes", "test_prio", "test_sync",
-        "np_writer", "np_reader", "mem", "kill", "nice", "block", "loop", "sh", "cat", NULL
+        "np_writer", "np_reader", "mem", "kill", "nice", "block", "loop", "sh", "cat", "wc", NULL
     };
     for(int i = 0; child_cmds[i]; i++)
         if(strcmp(name, child_cmds[i]) == 0)

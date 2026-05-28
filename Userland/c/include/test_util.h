@@ -38,6 +38,7 @@ int64_t  nice_cmd(int argc, char *argv[]);
 int64_t  block_cmd(int argc, char *argv[]);
 int64_t  sh_entry(int argc, char *argv[]);
 int64_t  cat(int argc, char *argv[]);
+int64_t  wc(int argc, char *argv[]);
 
 /* Provisto por _loader.c */
 void    *memset(void *s, int32_t c, uint64_t n);

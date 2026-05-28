@@ -12,6 +12,12 @@ if ! command -v docker >/dev/null 2>&1; then
 	exit 1
 fi
 
+if ! docker info >/dev/null 2>&1; then
+	echo "Docker está instalado, pero el daemon no responde."
+	echo "Inicie Docker Desktop o el servicio Docker y vuelva a ejecutar ./create.sh."
+	exit 1
+fi
+
 echo "Pull de la imagen ${IMAGE}..."
 docker pull "${IMAGE}"
 

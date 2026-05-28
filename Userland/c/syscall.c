@@ -42,6 +42,7 @@ static ProcEntry registry[] = {
     {"block", (void *)block_cmd},
     {"sh", (void *)sh_entry},
     {"cat", (void *)cat},
+    {"wc", (void *)wc},
     {0, 0}
 };
 

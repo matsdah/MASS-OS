@@ -16,6 +16,9 @@ int64_t cat(int argc, char *argv[]) {
         if (n == 0) {
             break;
         }
+        if (n == (uint64_t)-1) {
+            continue;
+        }
         sys_write(STDOUT, buf, n);
     }
 

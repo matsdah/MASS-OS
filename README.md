@@ -6,6 +6,7 @@ Kernel bare-metal x86-64 que corre directamente sobre QEMU o hardware real, sin 
 
 - Docker (único requisito en el host)
 - QEMU (`qemu-system-x86_64`) para ejecutar la imagen
+- Docker Desktop o el daemon Docker en ejecución antes de correr `./create.sh`
 
 ---
 
