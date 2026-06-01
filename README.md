@@ -89,7 +89,7 @@ Al bootear se inicia una shell interactiva. Comandos disponibles:
 | `registers` | Dump de registros de la última excepción |
 | `testDiv0` / `invOp` | Disparan excepción #DE / #UD |
 | `playBeep` | Toca una melodía por el parlante |
-| `testMM` | Test suite del memory manager (ver abajo) |
+| `test_mm` | Test suite del memory manager (ver abajo) |
 | `ps` | Lista procesos activos |
 | `+` / `-` | Aumenta / disminuye tamaño de fuente |
 
@@ -100,7 +100,7 @@ Al bootear se inicia una shell interactiva. Comandos disponibles:
 Dentro de la shell, ejecutar:
 
 ```
-testMM
+test_mm
 ```
 
 Corre una suite de 5 tests (alloc/free básico, múltiples allocaciones, coalescencia, edge cases, stress). El resultado esperado es `20 OK / 0 FAIL`.
@@ -110,11 +110,11 @@ Para testear **ambas implementaciones** compilar y ejecutar por separado:
 ```bash
 # Testear First-Fit
 ./compile.sh && ./run.sh
-# → dentro del OS: testMM
+# → dentro del OS: test_mm
 
 # Testear Buddy System
 MM=BUDDY ./compile.sh && ./run.sh
-# → dentro del OS: testMM
+# → dentro del OS: test_mm
 ```
 
 ---

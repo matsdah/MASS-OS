@@ -10,8 +10,8 @@ int64_t help(int argc, char *argv[]) {
     shellPrintString("Comandos disponibles: \n");
     shellPrintString("help                      ->   muestra la lista de comandos.\n");
     shellPrintString("clear                     ->   limpia la pantalla. (built-in) \n");
-    shellPrintString("+                         ->   aumenta tamano de fuente. (built-in) \n");
-    shellPrintString("-                         ->   disminuye tamano de fuente. (built-in) \n");
+    shellPrintString("+                         ->   aumenta tamano de fuente (atajo de teclado).\n");
+    shellPrintString("-                         ->   disminuye tamano de fuente (atajo de teclado).\n");
     shellPrintString("printTime                 ->   imprime la hora actual. (built-in) \n");
     shellPrintString("printDate                 ->   imprime la fecha actual. (built-in) \n");
     shellPrintString("registers                 ->   imprime registros. (built-in) \n");

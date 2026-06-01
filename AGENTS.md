@@ -9,7 +9,8 @@ Bare-metal x86-64 kernel (ITBA SO TP2). Builds inside a Docker container; runs o
 - **Compile:** `./compile.sh`  
   Runs `make clean all` **inside** the container. Do **not** run `make` directly on the host.
 - **Memory manager switch:** `MM=BUDDY ./compile.sh` (default is First-Fit).  
-  This is a compile-time switch (`-DMM_FF` / `-DMM_BUDDY`); a single image embeds exactly one allocator. To compare both, rebuild and rerun.
+  Compile-time switch (`-DMM_FF` / `-DMM_BUDDY`); a single image embeds exactly one allocator. To compare both, rebuild and rerun.
+- **Alias:** `make buddy` in the container is equivalent to `make MM=BUDDY all`.
 - **Run:** `./run.sh`  
   Boots QEMU with `Image/x64BareBonesImage.qcow2` (fallback `.img`), 512 MB RAM.
 - **Permission fix:** If `./run.sh` fails with "permission denied", the container wrote the image as root:  
@@ -37,8 +38,6 @@ All user code lives in the **single** `0000-sampleCodeModule.bin`. To add a new 
 3. Register the **name** in `Userland/c/userlib.c` -> `is_child_command()` so the shell spawns it as a new process instead of running it as a built-in.
 4. Update `help` text in `Userland/c/userlib.c` if desired.
 
-Current built-ins (`commands[]` in `userlib.c`) like `help`, `clear`, `ps`, etc. are still in-process. The enunciado requires **all** commands to be real processes; this is a known deviation.
-
 ## Syscalls
 
 The only kernel<->userland channel is `int 0x80`.  
@@ -57,7 +56,7 @@ Run these **inside the running OS shell**. They must work as both foreground and
 - `test_processes <max_procs>` — process creation/kill loop.
 - `test_prio <target>` — priority scheduler test.
 - `test_sync <n> <use_sem>` — race-condition test; result must be `0` when `use_sem=1`. (`<pairs>` and `<increments>` are hardcoded in the test.)
-- `test_named_pipe` — named pipe IPC test.
+- `test_named_pipe` — named pipe IPC test (currently runs in-process, not as a child).
 - `ps` — list processes.
 
 ## Critical constraints
@@ -69,15 +68,14 @@ Run these **inside the running OS shell**. They must work as both foreground and
 - **Spanish** for code, comments, and commit messages.
 - `make`, `make all`, and `make <memory_manager>` are reserved **exclusively** for compilation inside the Docker image. Other tasks (run QEMU, pull image, etc.) must use the provided scripts.
 
-## Known missing pieces
+## Known deviations
 
-- **Keyboard shortcuts:** `Ctrl+C` (kill foreground) and `Ctrl+D` (EOF) **are implemented**.
+- The enunciado requires **all** commands to be real processes. Some are still in-process built-ins:
+  - `clear`, `ps`, `printTime`, `printDate`, `registers`, `testDiv0`, `invOp`, `playBeep`
+- Shell background (`&`) and two-stage pipes (`cmd1 | cmd2`) **are** already implemented in `Userland/c/userlib.c`.
+- Keyboard shortcuts `Ctrl+C` (kill foreground) and `Ctrl+D` (EOF), and `+`/`-` (font size) **are** implemented.
   - `Ctrl+C` kills the **newest** foreground process (highest PID), avoiding killing the shell when it is waiting for a child.
   - `Ctrl+D` sends `0x04` (EOT) to the keyboard buffer; `fd_read` interprets it as EOF.
-- **Required commands not yet implemented:** none.
-  - Already implemented: `mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`, `wc`, `filter`, `mvar`.
-- **Built-ins still in-process:** `clear`, `ps`, `printTime`, `printDate`, `registers`, `testDiv0`, `invOp`, `playBeep`, `+`, `-`.
-- Shell background (`&`) and two-stage pipes (`cmd1 | cmd2`) **are** already implemented in `Userland/c/userlib.c`.
 
 ## Technical notes: Ctrl+C fix and ZOMBIE reaping
 

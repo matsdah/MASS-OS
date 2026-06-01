@@ -330,7 +330,7 @@ char getchar(){
    ejecutarse in-process dentro de la shell. */
 static int is_child_command(const char *name){
     static const char *child_cmds[] = {
-        "test_mm", "test_processes", "test_prio", "test_sync",
+        "test_mm", "test_processes", "test_prio", "test_sync", "test_named_pipe",
         "np_writer", "np_reader", "mem", "kill", "nice", "block", "loop", "sh", "cat", "wc", "mvar", "filter", "help", NULL
     };
     for(int i = 0; child_cmds[i]; i++)
