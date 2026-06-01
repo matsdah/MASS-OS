@@ -56,13 +56,13 @@ Run these **inside the running OS shell**. They must work as both foreground and
 - `test_mm <max_bytes>` — infinite alloc/free loop; prints only on error. Must pass with at least one MM.
 - `test_processes <max_procs>` — process creation/kill loop.
 - `test_prio <target>` — priority scheduler test.
-- `test_sync <pairs> <increments> <use_sem>` — race-condition test; result must be `0` when `use_sem=1`.
+- `test_sync <n> <use_sem>` — race-condition test; result must be `0` when `use_sem=1`. (`<pairs>` and `<increments>` are hardcoded in the test.)
 - `test_named_pipe` — named pipe IPC test.
 - `ps` — list processes.
 
 ## Critical constraints
 
-- **Zero `-Wall` warnings.** Kernel and userland compile with `-Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes -ffreestanding -nostdlib -mno-red-zone -std=c99`.
+- **Zero `-Wall` warnings.** Kernel and userland compile with `-Wall -Wextra -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wformat -Wstrict-prototypes -Wno-unused-parameter -ffreestanding -nostdlib -mno-red-zone -fno-common -fno-pie -fno-exceptions -fno-asynchronous-unwind-tables -mno-mmx -mno-sse -mno-sse2 -fno-builtin-malloc -fno-builtin-free -fno-builtin-realloc -std=c99`.
 - **No busy waiting** except where explicitly allowed (`loop` command, `test_sync` without semaphores).
 - **No deadlocks, no race conditions.** Semaphore value updates must use atomic instructions (`xchg` / `lock cmpxchg`).
 - **No binaries in repo** — `.o`, `.bin`, `.img`, `.qcow2`, `.vmdk` are already in `.gitignore`.
@@ -74,8 +74,8 @@ Run these **inside the running OS shell**. They must work as both foreground and
 - **Keyboard shortcuts:** `Ctrl+C` (kill foreground) and `Ctrl+D` (EOF) **are implemented**.
   - `Ctrl+C` kills the **newest** foreground process (highest PID), avoiding killing the shell when it is waiting for a child.
   - `Ctrl+D` sends `0x04` (EOT) to the keyboard buffer; `fd_read` interprets it as EOF.
-- **Required commands not yet implemented:** `wc`, `filter`, `mvar`.
-  - Already implemented: `mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`.
+- **Required commands not yet implemented:** none.
+  - Already implemented: `mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`, `wc`, `filter`, `mvar`.
 - **Built-ins still in-process:** `help`, `clear`, `ps`, `printTime`, `printDate`, `registers`, `testDiv0`, `invOp`, `playBeep`, `bmFPS`, `bmCPU`, `bmMEM`, `bmKEY`, `+`, `-`.
 - Shell background (`&`) and two-stage pipes (`cmd1 | cmd2`) **are** already implemented in `Userland/c/userlib.c`.
 
@@ -108,5 +108,4 @@ Killing the foreground process from the keyboard ISR (`Ctrl+C`) caused the scree
 
 ## Repo-specific gotchas
 
-- ~~`AGENTS.md` is currently listed in `.gitignore` (line 17). Remove it so the file is tracked.~~ (Fixed — `AGENTS.md` is now tracked.)
 - `compile.sh` validates that the container mounts the current directory at `/root`; if you moved the repo, recreate the container.
