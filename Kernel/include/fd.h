@@ -27,7 +27,7 @@ FD *fd_get(uint64_t fd);
 void fd_incref(uint64_t fd);
 void fd_decref(uint64_t fd);
 uint64_t fd_read(FD *d, char *buf, uint64_t count, struct PCB *cur);
-uint64_t fd_write(FD *d, const char *buf, uint64_t count, struct PCB *cur);
+uint64_t fd_write(FD *d, const char *buf, uint64_t count, struct PCB *cur, uint32_t color);
 int fd_create_pipe(struct Pipe *p, int write_end);
 
 #endif

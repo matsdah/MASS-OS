@@ -60,4 +60,13 @@ int64_t  sys_pipe_setup(uint64_t pid, uint64_t stdio_fd, uint64_t target);
 // Syscall 38 (modo de terminal)
 int64_t  sys_tty_mode(uint64_t mode);
 
+// Syscall 39 (escritura con color)
+uint64_t sys_write_color(uint64_t fd, const char *buff, uint64_t count, uint32_t color);
+
+// Syscalls 40-43 (MVar nativas)
+int64_t sys_mvar_create(const char *name);
+int64_t sys_mvar_put(const char *name, char value);
+int64_t sys_mvar_take(const char *name);
+int64_t sys_mvar_destroy(const char *name);
+
 #endif

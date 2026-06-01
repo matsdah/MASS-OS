@@ -183,7 +183,7 @@ uint64_t fd_read(FD* d, char* buf, uint64_t count, struct PCB* cur){
  * Terminal: imprime cada caracter.
  * Pipe: delega en pipe_write.
  */
-uint64_t fd_write(FD* d, const char* buf, uint64_t count, struct PCB* cur){
+uint64_t fd_write(FD* d, const char* buf, uint64_t count, struct PCB* cur, uint32_t color){
     (void)cur;
 
     if(d == NULL || buf == NULL || count == 0){
@@ -192,8 +192,6 @@ uint64_t fd_write(FD* d, const char* buf, uint64_t count, struct PCB* cur){
 
     switch(d->type){
         case FD_TERMINAL: {
-            uint32_t color = 0xFFFFFF;
-
             for(uint64_t i = 0; i < count; i++){
                 videoPutChar((uint8_t)buf[i], color);
             }

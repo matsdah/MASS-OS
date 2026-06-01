@@ -28,4 +28,13 @@ int64_t my_sem_close(char *name);
 int64_t my_pipe_open(char *name, int fds[2]);
 int64_t my_pipe_setup(uint64_t pid, uint64_t stdio_fd, uint64_t target);
 
+/* Syscall raw para escritura con color */
+uint64_t sys_write_color(uint64_t fd, const char *buf, uint64_t count, uint32_t color);
+
+/* Syscalls MVar nativas */
+int64_t sys_mvar_create(const char *name);
+int64_t sys_mvar_put(const char *name, char value);
+int64_t sys_mvar_take(const char *name);
+int64_t sys_mvar_destroy(const char *name);
+
 #endif

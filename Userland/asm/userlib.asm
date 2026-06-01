@@ -38,6 +38,11 @@ GLOBAL sys_close
 GLOBAL sys_pipe_open
 GLOBAL sys_pipe_setup
 GLOBAL sys_tty_mode
+GLOBAL sys_write_color
+GLOBAL sys_mvar_create
+GLOBAL sys_mvar_put
+GLOBAL sys_mvar_take
+GLOBAL sys_mvar_destroy
 
 section .text
 
@@ -181,6 +186,11 @@ sys_write:
 	int 0x80
 	ret
 
+sys_write_color:
+	mov rax, 39
+	int 0x80
+	ret
+
 sys_increase_fontsize:
     	mov rax, 5
 	int 0x80
@@ -233,6 +243,26 @@ sys_putpixel:
 
 sys_fill_rect:
 	mov rax, 15
+	int 0x80
+	ret
+
+sys_mvar_create:
+	mov rax, 40
+	int 0x80
+	ret
+
+sys_mvar_put:
+	mov rax, 41
+	int 0x80
+	ret
+
+sys_mvar_take:
+	mov rax, 42
+	int 0x80
+	ret
+
+sys_mvar_destroy:
+	mov rax, 43
 	int 0x80
 	ret
 

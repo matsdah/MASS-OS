@@ -162,12 +162,18 @@ int64_t sem_wait(const char *name){
     /* Decrementar el valor del semáforo. */
     s->value--;
 
-    if(s->value < 0){
-        PCB* cur = process_current();
+    PCB* cur = process_current();
+    if(cur != NULL){
+        /* Registrar el semaforo en el PCB para cleanup al morir */
+        sem_str_copy(cur->sem_name, name, 32);
+    }
 
+    if(s->value < 0){
         if(cur == NULL){
             return -1;
         }
+
+        cur->sem_blocked = 1;
 
         /* Agregar el proceso a la cola de espera. */
         queue_push(s, cur->pid);
@@ -175,6 +181,10 @@ int64_t sem_wait(const char *name){
         /* Bloquear el proceso actual. */
         /* también setea force_switch si es el actual. */
         process_block(cur->pid); 
+    } else {
+        if(cur != NULL){
+            cur->sem_blocked = 0;
+        }
     }
 
     return 0;
@@ -203,6 +213,56 @@ int64_t sem_post(const char *name){
     }
 
     return 0;
+}
+
+/* Limpia semaforos asociados a un proceso que muere.
+ * Si el proceso estaba bloqueado en una cola, lo remueve y compensa value.
+ * Si el proceso tenia el recurso tomado, lo libera con sem_post. */
+void sem_cleanup_for_process(uint64_t pid){
+    PCB* p = process_get(pid);
+    if(p == NULL || p->sem_name[0] == '\0'){
+        return;
+    }
+
+    Semaphore* s = find_sem(p->sem_name);
+    if(s == NULL){
+        p->sem_name[0] = '\0';
+        p->sem_blocked = 0;
+        return;
+    }
+
+    if(p->sem_blocked){
+        /* Proceso estaba en cola de espera: reconstruir cola sin el PID */
+        uint64_t new_queue[MAX_PROCESSES];
+        int new_count = 0;
+        int idx = s->wait_head;
+        for(int i = 0; i < s->wait_count; i++){
+            if(s->wait_queue[idx] != pid){
+                new_queue[new_count++] = s->wait_queue[idx];
+            }
+            idx = (idx + 1) % MAX_PROCESSES;
+        }
+        if(new_count < s->wait_count){
+            /* El PID estaba en la cola: compensar el decremento de sem_wait */
+            s->wait_count = new_count;
+            for(int i = 0; i < new_count; i++){
+                s->wait_queue[i] = new_queue[i];
+            }
+            s->wait_head = 0;
+            s->wait_tail = new_count;
+            s->value++;
+        }
+    } else {
+        /* Proceso tenia el recurso: liberarlo */
+        s->value++;
+        if((s->value <= 0) && (s->wait_count > 0)){
+            uint64_t wp = queue_pop(s);
+            process_unblock(wp);
+        }
+    }
+
+    p->sem_name[0] = '\0';
+    p->sem_blocked = 0;
 }
 
 /* Decrementa el contador de usuarios; libera la entrada si llega a 0. */

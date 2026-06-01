@@ -4,11 +4,11 @@
 
 Sistema multitasking preemptivo funcional. Kernel 64-bit, IDT/IRQs, drivers (video, teclado, sonido, timer), syscalls `int 0x80`, ambos memory managers (FF / Buddy), scheduler Round-Robin con prioridades, semaforos nombrados, pipes anonimos/nombrados + FDs, shell con parseo de `&` y `|` operativos.
 
-**Comandos core implementados como procesos reales:** `mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`.
+**Comandos core implementados como procesos reales:** `mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`, `wc`, `filter`, `mvar`.
 **Senales de teclado implementadas:** `Ctrl+C` (mata foreground), `Ctrl+D` (EOF a stdin), `F1` (snapshot de registros, reemplazo de `L_CONTROL`).
 **Fixes criticos aplicados:** reap de ZOMBIEs en scheduler, `process_kill` seguro desde ISR, `process_kill_foreground` mata al hijo y no a la shell.
 
-Lo que resta son: `wc`, `filter`, `mvar`, y la migracion total de built-ins (`help`, `clear`, `ps`, etc.) a procesos reales para cumplir el enunciado.
+Lo que resta es la migracion total de built-ins (`help`, `clear`, `ps`, etc.) a procesos reales para cumplir el enunciado.
 
 ---
 
@@ -46,14 +46,15 @@ Estos leen de `fd[0]` y escriben en `fd[1]`; la shell ya maneja `|` y `sys_pipe_
 
 - [x] `cat` — lee stdin, escribe stdout (hasta EOF).
   - *Nota tecnica:* Implementado en `Userland/c/cat.c`. Loop de `sys_read(STDIN, buf, 128)`; si retorna `0` (EOF) termina, sino `sys_write(STDOUT, buf, n)`. Funciona tanto en foreground (teclado + Ctrl+D) como en pipes (`cmd1 | cat`).
-- [ ] `wc` — cuenta lineas del stdin; termina en EOF.
-- [ ] `filter` — lee stdin, filtra vocales (mayusculas y minusculas), escribe stdout.
+- [x] `wc` — cuenta lineas del stdin; termina en EOF.
+- [x] `filter` — lee stdin, filtra vocales (mayusculas y minusculas), escribe stdout.
 
 ### 4. Comando `mvar`
-- [ ] `mvar <escritores> <lectores>` — problema lectores/escritores sobre variable compartida usando semaforos.
-  - Escritores: espera activa aleatoria, espera variable vacia, escribe valor unico ('A', 'B', ...).
-  - Lectores: espera activa aleatoria, espera que haya valor, consume e imprime con color.
-  - El proceso principal debe terminar inmediatamente tras crear los hijos.
+- [x] `mvar <escritores> <lectores>` — problema lectores/escritores sobre variable compartida usando **MVars nativas del kernel**.
+  - Escritores: espera activa aleatoria, `sys_mvar_put(name, letter)` (bloqueante si FULL).
+  - Lectores: espera activa aleatoria, `c = sys_mvar_take(name)` (bloqueante si EMPTY), imprime con `sys_write_color`.
+  - El proceso principal crea la MVar, spawnea hijos y termina inmediatamente.
+  - Cleanup al matar: `mvar_cleanup_for_process` remueve el PID de las colas de espera sin alterar el estado EMPTY/FULL.
 
 ### 5. Migrar todos los built-ins a procesos reales
 El enunciado requiere que **todos** los comandos sean procesos; actualmente los tests, `np_writer`/`np_reader`, y los comandos core (`mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`) ya lo son. Refactorizar la shell (`Userland/c/userlib.c` -> `commands[]` y `processLine`) para que:

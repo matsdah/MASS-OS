@@ -38,6 +38,8 @@ typedef struct PCB{
     int argc;                   /* Cantidad de argumentos (para pasar a la función entry) */
     char **argv;                /* Argumentos (para pasar a la función entry) */
     int retval;                 /* Valor de retorno del proceso (para que el padre lo lea en waitpid) */
+    char sem_name[32];          /* Nombre del semaforo que tiene o espera (vacío = ninguno) */
+    uint8_t sem_blocked;        /* 1 = bloqueado esperando semaforo; 0 = tomó el recurso */
 } PCB;
 
 /* Vista userland de un proceso diferenciado de Kernel. */

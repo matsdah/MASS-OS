@@ -4,6 +4,8 @@
 #include "lib.h"
 #include "interrupts.h"
 #include "fd.h"
+#include "semaphore.h"
+#include "mvar.h"
 #include <stddef.h>
 
 /* Tabla de procesos del Kernel. */
@@ -261,6 +263,8 @@ int process_create(const char *name, ProcessEntry entry, int argc, char **argv, 
     p->argv = argv_copy;    /* Memoria kernel (se libera en process_exit/kill) */
     p->retval = 0;
     p->entry = entry;
+    p->sem_name[0] = '\0';
+    p->sem_blocked = 0;
 
     str_copy(p->name, name, MAX_NAME_LEN);
     
@@ -338,6 +342,10 @@ void process_kill(uint64_t pid){
 
     p->retval = -1;
 
+    /* Limpiar semaforos y MVars antes de liberar recursos para evitar deadlock. */
+    sem_cleanup_for_process(pid);
+    mvar_cleanup_for_process(pid);
+
     /* Despertar padre si estaba esperando este proceso. */
     PCB *parent = process_get(p->parent_pid);
     if(parent != NULL && parent->state == PROCESS_BLOCKED && parent->waiting_for == pid){
@@ -404,6 +412,7 @@ void process_unblock(uint64_t pid){
     }
 
     p->state = PROCESS_READY;
+    p->sem_blocked = 0;  /* Ya no esta bloqueado esperando semaforo */
 }
 
 /* Cambia la prioridad del proceso con el PID especificado. */

@@ -39,6 +39,10 @@ int64_t  block_cmd(int argc, char *argv[]);
 int64_t  sh_entry(int argc, char *argv[]);
 int64_t  cat(int argc, char *argv[]);
 int64_t  wc(int argc, char *argv[]);
+void     mvar_writer(int argc, char *argv[]);
+void     mvar_reader(int argc, char *argv[]);
+int64_t  mvar(int argc, char *argv[]);
+int64_t  filter(int argc, char *argv[]);
 
 /* Provisto por _loader.c */
 void    *memset(void *s, int32_t c, uint64_t n);
