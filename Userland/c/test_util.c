@@ -16,11 +16,8 @@ uint32_t GetUint(void){
 
 /* Genera un número entero pseudo-aleatorio uniformemente distribuido en [0, max) */
 uint32_t GetUniform(uint32_t max){
-    if(max == 0){
-        return 0;
-    }
-
-    return (GetUint() % max);
+    uint32_t u = GetUint();
+    return (uint32_t)((u + 1.0) * 2.328306435454494e-10 * max);
 }
 
 /* Verificacion de memoria. */

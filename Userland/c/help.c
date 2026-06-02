@@ -28,9 +28,9 @@ int64_t help(int argc, char *argv[]) {
     shellPrintString("nice <pid> <prio>         ->   cambia prioridad (1-5).\n");
     shellPrintString("block <pid>               ->   alterna estado BLOCKED/READY.\n");
     shellPrintString("loop                      ->   imprime PID periodicamente.\n");
-    shellPrintString("sh                        ->   nueva shell interactiva.\n");
+    shellPrintString("sh                        ->   nueva shell.\n");
     shellPrintString("cat                       ->   copia stdin a stdout.\n");
-    shellPrintString("wc                        ->   cuenta lineas, palabras y bytes de stdin.\n");
+    shellPrintString("wc                        ->   cuenta lineas, palabras y bytes de stdin. CTRL + D para finalizar.\n");
     shellPrintString("mvar <esc> <lec>          ->   MVar: escritores/lectores sincronizados.\n");
     shellPrintString("filter                    ->   filtra vocales del stdin.\n");
     shellPrintString("ps                        ->   lista de procesos activos.\n");

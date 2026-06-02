@@ -28,36 +28,36 @@ static void slowInc(int64_t *p, int64_t inc){
  *  argv[0] = n (cantidad de iteraciones)
  *  argv[1] = inc (+1 o -1)
  *  argv[2] = use_sem (0/1 para habilitar semáforos) */
-void my_process_inc(int argc, char *argv[]){
+int64_t my_process_inc(int argc, char *argv[]){
     uint64_t n;
     int8_t inc;
     int8_t use_sem;
 
     /* Validación de aridad: sin parámetros correctos no hay test. */
     if(argc != 3){
-        return;
+        return -1;
     }
 
     /* n inválido: sin iteraciones no tiene sentido correr. */
     if((n = (uint64_t)satoi(argv[0])) == 0){
-        return;
+        return -1;
     }
 
     /* inc inválido (0): no modifica el valor global. */
     if((inc = (int8_t)satoi(argv[1])) == 0){
-        return;
+        return -1;
     }
 
     /* use_sem inválido: esperamos 0 o 1. */
     if((use_sem = (int8_t)satoi(argv[2])) < 0){
-        return;
+        return -1;
     }
 
     if(use_sem){
         // Semáforo compartido por nombre entre procesos no relacionados.
         if(!my_sem_open(SEM_ID, 1)){
             printf("test_sync: ERROR abriendo semaforo.\n");
-            return;
+            return -1;
         }
     }
 
@@ -83,6 +83,8 @@ void my_process_inc(int argc, char *argv[]){
         /* Cierra el semáforo; decrementa el contador de usuarios. */
         my_sem_close(SEM_ID);
     }
+
+    return 0;
 }
 
 /* Función interna para ejecutar la prueba de sincronización.

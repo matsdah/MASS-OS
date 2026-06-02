@@ -18,7 +18,7 @@ else
     MM_FLAG = -DMM_FF
 endif
 
-SOURCES=$(wildcard c/*.c c/drivers/*.c) $(MM_SRC)
+SOURCES=$(wildcard c/*.c c/drivers/*.c c/scheduler/*.c c/process/*.c c/semaphore/*.c c/pipe/*.c c/interrupts/*.c c/syscall/*.c c/lib/*.c c/sound/*.c c/kernel/*.c) $(MM_SRC)
 OBJECTS=$(SOURCES:.c=.o)
 
 all: $(KERNEL)
@@ -36,6 +36,6 @@ $(LOADEROBJECT):
 	$(ASM) $(ASMFLAGS) $(LOADERSRC) -o $(LOADEROBJECT)
 
 clean:
-	rm -rf asm/*.o c/*.o c/drivers/*.o c/memoryManager/*.o *.o *.bin
+	rm -rf asm/*.o c/*.o c/drivers/*.o c/memoryManager/*.o c/scheduler/*.o c/process/*.o c/semaphore/*.o c/pipe/*.o c/interrupts/*.o c/syscall/*.o c/lib/*.o c/sound/*.o c/kernel/*.o *.o *.bin
 
 .PHONY: all clean
