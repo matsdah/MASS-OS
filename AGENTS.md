@@ -27,7 +27,9 @@ Four top-level components, each with its own Makefile, assembled into one bootab
   - `0000-sampleCodeModule.bin` -> `0x400000` (the shell + all user code)
   - `0001-sampleDataModule.bin` -> `0x500000`
 
-Kernel heap: `0x600000`, 8 MB (`HEAP_START` / `HEAP_SIZE` in `Kernel/c/kernel.c`).
+Kernel heap: `0x600000`, 8 MB (`HEAP_START` / `HEAP_SIZE` in `Kernel/c/kernel/kernel.c`).
+
+**Kernel-internal allocations** (process stacks, argv copies) must use `mm_malloc_kernel()`, which is tracked separately from user `mm_malloc()` in `MemStatus.used_kernel`.
 
 ## Adding a user-space command
 
@@ -45,8 +47,9 @@ To add a syscall:
 
 1. Bump `CANT_SYS` in `Kernel/include/defs.h`.
 2. Implement `sys_*` in the kernel.
-3. Add it to the `syscalls[]` table in `Kernel/c/syscallDispatcher.c`.
-4. Expose a wrapper in `Userland/asm/userlib.asm` and `Userland/c/shell/userlib.c` / `Userland/c/include/syscall.h`.
+3. Add it to the `syscalls[]` table in `Kernel/c/syscall/syscallDispatcher.c`.
+4. Expose a wrapper in `Userland/asm/userlib.asm` and `Userland/c/include/syscall.h`.
+5. **Critical:** Update the hardcoded `cmp rax, 44` in `Kernel/asm/interrupts.asm` (`_irq128Handler`) to match the new `CANT_SYS`. If this assembly check is out of sync, the new syscall will return `-1` (invalid) even if the table is correct.
 
 ## Testing
 
@@ -56,12 +59,12 @@ Run these **inside the running OS shell**. They must work as both foreground and
 - `test_processes <max_procs>` — process creation/kill loop.
 - `test_prio <target>` — priority scheduler test.
 - `test_sync <n> <use_sem>` — race-condition test; result must be `0` when `use_sem=1`. (`<pairs>` and `<increments>` are hardcoded in the test.)
-- `test_named_pipe` — named pipe IPC test (currently runs in-process, not as a child).
+- `test_named_pipe` — named pipe IPC test (runs as a child process).
 - `ps` — list processes.
 
 ## Critical constraints
 
-- **Zero `-Wall` warnings.** Kernel and userland compile with `-Wall -Wextra -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wformat -Wstrict-prototypes -Wno-unused-parameter -ffreestanding -nostdlib -mno-red-zone -fno-common -fno-pie -fno-exceptions -fno-asynchronous-unwind-tables -mno-mmx -mno-sse -mno-sse2 -fno-builtin-malloc -fno-builtin-free -fno-builtin-realloc -std=c99`.
+- **Zero `-Wall` warnings.** Kernel and userland compile with `-Wall -Wextra -Werror -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wformat -Wstrict-prototypes -Wno-unused-parameter -ffreestanding -nostdlib -mno-red-zone -fno-common -fno-pie -fno-exceptions -fno-asynchronous-unwind-tables -mno-mmx -mno-sse -mno-sse2 -fno-builtin-malloc -fno-builtin-free -fno-builtin-realloc -std=c99`.
 - **No busy waiting** except where explicitly allowed (`loop` command, `test_sync` without semaphores).
 - **No deadlocks, no race conditions.** Semaphore value updates must use atomic instructions (`xchg` / `lock cmpxchg`).
 - **No binaries in repo** — `.o`, `.bin`, `.img`, `.qcow2`, `.vmdk` are already in `.gitignore`.
@@ -79,31 +82,27 @@ Run these **inside the running OS shell**. They must work as both foreground and
 
 ## Technical notes: Ctrl+C fix and ZOMBIE reaping
 
-This section documents critical kernel fixes applied to make `Ctrl+C` safe and prevent system freezes.
+Killing the foreground process from the keyboard ISR (`Ctrl+C`) previously caused the screen to freeze. The root causes and fixes applied:
 
-### Problem
-Killing the foreground process from the keyboard ISR (`Ctrl+C`) caused the screen to freeze. The shell prompt never returned.
+1. **`process_kill_foreground` killed the shell instead of the child.**  
+   It now searches for the foreground process with the **highest PID** (the most recent child) and only kills if `fg_count > 1`. File: `Kernel/c/process/process.c`.
 
-### Root causes and fixes
+2. **`process_kill` freed the current process's stack from interrupt context.**  
+   When `p == current_process`, it only marks the process as `ZOMBIE`, releases FDs, and sets `force_switch = 1`. It **does not** call `mm_free(stack_base)` or `mm_free(argv)`. File: `Kernel/c/process/process.c`.
 
-1. **`process_kill_foreground` killed the shell instead of the child.**
-   - *Fix:* It now searches for the foreground process with the **highest PID** (the most recent child) and only kills if `fg_count > 1`. File: `Kernel/c/process.c`.
+3. **ZOMBIE reaping was missing in the scheduler.**  
+   Both `scheduler_tick` and `scheduler_yield_impl` now check `cur->state == PROCESS_ZOMBIE` **after** finding a valid `next` process. If true, they call `scheduler_remove(cur)`, free `stack_base` and `argv`, and mark the slot as `FREE`. File: `Kernel/c/scheduler/scheduler.c`.
 
-2. **`process_kill` freed the current process's stack from interrupt context.**
-   - *Fix:* When `p == current_process`, it only marks the process as `ZOMBIE`, releases FDs, and sets `force_switch = 1`. It **does not** call `mm_free(stack_base)` or `mm_free(argv)`. File: `Kernel/c/process.c`.
+4. **`process_waitpid` leaked memory when reclaiming a ZOMBIE child.**  
+   It now frees `stack_base` and `argv` before setting `child->state = PROCESS_FREE`. File: `Kernel/c/process/process.c`.
 
-3. **ZOMBIE reaping was missing in the scheduler.**
-   - *Fix:* Both `scheduler_tick` and `scheduler_yield_impl` now check `cur->state == PROCESS_ZOMBIE` **after** finding a valid `next` process. If true, they call `scheduler_remove(cur)`, free `stack_base` and `argv`, and mark the slot as `FREE`. File: `Kernel/c/scheduler.c`.
+5. **`process_exit` left the process in the scheduler queue.**  
+   Added `scheduler_remove(current_process)` in all exit paths. File: `Kernel/c/process/process.c`.
 
-4. **`process_waitpid` leaked memory when reclaiming a ZOMBIE child.**
-   - *Fix:* It now frees `stack_base` and `argv` before setting `child->state = PROCESS_FREE`. File: `Kernel/c/process.c`.
-
-5. **`process_exit` left the process in the scheduler queue.**
-   - *Fix:* Added `scheduler_remove(current_process)` in all exit paths. File: `Kernel/c/process.c`.
-
-6. **The keyboard ISR (`_irq01Handler`) ignored `force_switch`.**
-   - *Fix:* Before `popState`, it now checks `force_switch`. If set, it calls `scheduler_yield_impl` and swaps `rsp`, exactly like the syscall handler (`_irq128Handler`). File: `Kernel/asm/interrupts.asm`.
+6. **The keyboard ISR (`_irq01Handler`) ignored `force_switch`.**  
+   Before `popState`, it now checks `force_switch`. If set, it calls `scheduler_yield_impl` and swaps `rsp`, exactly like the syscall handler (`_irq128Handler`). File: `Kernel/asm/interrupts.asm`.
 
 ## Repo-specific gotchas
 
 - `compile.sh` validates that the container mounts the current directory at `/root`; if you moved the repo, recreate the container.
+- `Kernel/c/syscall/syscallDispatcher.c` uses `CANT_SYS` for the `syscalls[]` array size, but the bounds check in `Kernel/asm/interrupts.asm` is a hardcoded literal (`cmp rax, 44`). They must be kept in sync.
