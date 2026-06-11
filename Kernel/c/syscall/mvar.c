@@ -48,7 +48,9 @@ static void mvar_str_copy(char *dst, const char *src, int max){
     dst[i] = '\0';
 }
 
-/* Helpers de cola circular */
+/* Helpers de cola circular FIFO (orden de llegada).
+   El scheduler se encarga de la prioridad; el MVar solo garantiza
+   que los procesos se desbloqueen en el orden en que llegaron. */
 static void wq_push(MVar *mv, uint64_t pid){
     if(mv->wq_count >= MVAR_Q_SIZE) return;
     mv->wq[mv->wq_tail] = pid;

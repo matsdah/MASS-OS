@@ -35,31 +35,48 @@ void scheduler_start(void){
     scheduler_start_asm(first->rsp);
 }
 
-/* Agrega un proceso a la cola de ejecución. */
+/* Agrega un proceso a la cola de ejecución ordenada por prioridad
+   descendente. Mantiene Round Robin intra-nivel: dentro de la misma
+   prioridad, el orden de llegada se preserva. */
 void scheduler_add(PCB* p){
+    if(queue_size >= MAX_PROCESSES) return;
 
-    if(queue_size < MAX_PROCESSES){
-        /* Agrega p al array statico. */
-        run_queue[queue_size++] = p;
+    /* Insertar en orden descendente por prioridad. */
+    int insert_pos = queue_size;
+    for(int i = 0; i < queue_size; i++){
+        if(run_queue[i]->priority < p->priority){
+            insert_pos = i;
+            /* Desplazar elementos a la derecha. */
+            for(int j = queue_size; j > i; j--){
+                run_queue[j] = run_queue[j-1];
+            }
+            break;
+        }
+    }
+    run_queue[insert_pos] = p;
+    queue_size++;
+
+    /* Ajustar queue_idx si insertamos antes o en la posición actual. */
+    if(insert_pos <= queue_idx && queue_size > 1){
+        queue_idx++;
     }
 }
 
-/* Elimina un proceso de la cola de ejecución. */
+/* Elimina un proceso de la cola de ejecución desplazando elementos
+   para mantener el orden por prioridad. */
 void scheduler_remove(PCB* p){
-
     for(int i = 0; i < queue_size; i++){
-        /* Recorro la cola estática. */
-
         if(p == run_queue[i]){
-
-            /* Reemplazar con el último proceso. */
-            run_queue[i] = run_queue[--queue_size]; 
-
-            if((queue_idx >= queue_size) && (queue_size > 0)){
-                /* Caso en el que estaba procesando el último proceso. */
-                queue_idx = queue_size - 1;
+            /* Desplazar todo a la izquierda para mantener orden. */
+            for(int j = i; j < queue_size - 1; j++){
+                run_queue[j] = run_queue[j+1];
             }
-
+            queue_size--;
+            if((queue_idx >= queue_size) && (queue_size > 0)){
+                queue_idx = queue_size - 1;
+            } else if(i < queue_idx) {
+                queue_idx--;
+            }
             return;
         }
     }

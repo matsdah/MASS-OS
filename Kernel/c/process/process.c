@@ -413,6 +413,13 @@ void process_unblock(uint64_t pid){
 
     p->state = PROCESS_READY;
     p->sem_blocked = 0;  /* Ya no esta bloqueado esperando semaforo */
+
+    /* Soft boost: si el proceso desbloqueado tiene más prioridad que el
+       actual, forzar un re-scan del scheduler inmediatamente. */
+    PCB* cur = process_current();
+    if(cur != NULL && p->priority > cur->priority){
+        force_switch = 1;
+    }
 }
 
 /* Cambia la prioridad del proceso con el PID especificado. */
@@ -437,6 +444,14 @@ void process_nice(uint64_t pid, uint8_t new_priority){
        proceso recibe un quantum completo en el proximo tick; si se baja, se corta
        el quantum actual para que no supere la nueva prioridad. */
     p->remaining_quanta = new_priority;
+
+    /* Reordenar en la cola del scheduler para reflejar la nueva prioridad.
+       El proceso puede estar en RUNNING, READY o BLOCKED; siempre está en
+       run_queue salvo que esté FREE/ZOMBIE. */
+    if(p->state != PROCESS_FREE && p->state != PROCESS_ZOMBIE){
+        scheduler_remove(p);
+        scheduler_add(p);
+    }
 }
 
 /* Espera a que un proceso hijo termine. */
