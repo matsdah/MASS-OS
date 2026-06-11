@@ -30,6 +30,10 @@ typedef struct {
     int rq_head;
     int rq_tail;
     int rq_count;
+
+    /* Contador de serves consecutivos del nivel mas alto (anti-starvation) */
+    int wq_consecutive;
+    int rq_consecutive;
 } MVar;
 
 static MVar mvar_table[MAX_MVARS];
@@ -79,6 +83,87 @@ static uint64_t rq_pop(MVar *mv){
     return pid;
 }
 
+/* Extrae de la cola circular el PID con mayor prioridad.
+   Anti-starvation: tras 'prioridad' serves seguidos del nivel mas alto,
+   da un turno al de menor prioridad. */
+static uint64_t wq_pop_highest(MVar *mv){
+    if(mv->wq_count <= 0) return 0;
+
+    int high_idx = -1, low_idx = -1;
+    int high_prio = -1, low_prio = 999;
+    int idx = mv->wq_head;
+    for(int i = 0; i < mv->wq_count; i++){
+        PCB *p = process_get(mv->wq[idx]);
+        int prio = p ? p->priority : 0;
+        if(prio > high_prio){ high_prio = prio; high_idx = idx; }
+        if(prio < low_prio){  low_prio  = prio; low_idx  = idx; }
+        idx = (idx + 1) % MVAR_Q_SIZE;
+    }
+    if(high_idx < 0) return wq_pop(mv);
+
+    int target_idx;
+    if(mv->wq_consecutive >= high_prio && low_idx != high_idx){
+        target_idx = low_idx;
+        mv->wq_consecutive = 0;
+    } else {
+        target_idx = high_idx;
+        mv->wq_consecutive++;
+    }
+
+    uint64_t pid = mv->wq[target_idx];
+    uint64_t new_q[MVAR_Q_SIZE];
+    int new_count = 0;
+    idx = mv->wq_head;
+    for(int i = 0; i < mv->wq_count; i++){
+        if(idx != target_idx) new_q[new_count++] = mv->wq[idx];
+        idx = (idx + 1) % MVAR_Q_SIZE;
+    }
+    for(int i = 0; i < new_count; i++) mv->wq[i] = new_q[i];
+    mv->wq_head = 0;
+    mv->wq_tail = new_count;
+    mv->wq_count = new_count;
+    return pid;
+}
+
+static uint64_t rq_pop_highest(MVar *mv){
+    if(mv->rq_count <= 0) return 0;
+
+    int high_idx = -1, low_idx = -1;
+    int high_prio = -1, low_prio = 999;
+    int idx = mv->rq_head;
+    for(int i = 0; i < mv->rq_count; i++){
+        PCB *p = process_get(mv->rq[idx]);
+        int prio = p ? p->priority : 0;
+        if(prio > high_prio){ high_prio = prio; high_idx = idx; }
+        if(prio < low_prio){  low_prio  = prio; low_idx  = idx; }
+        idx = (idx + 1) % MVAR_Q_SIZE;
+    }
+    if(high_idx < 0) return rq_pop(mv);
+
+    int target_idx;
+    if(mv->rq_consecutive >= high_prio && low_idx != high_idx){
+        target_idx = low_idx;
+        mv->rq_consecutive = 0;
+    } else {
+        target_idx = high_idx;
+        mv->rq_consecutive++;
+    }
+
+    uint64_t pid = mv->rq[target_idx];
+    uint64_t new_q[MVAR_Q_SIZE];
+    int new_count = 0;
+    idx = mv->rq_head;
+    for(int i = 0; i < mv->rq_count; i++){
+        if(idx != target_idx) new_q[new_count++] = mv->rq[idx];
+        idx = (idx + 1) % MVAR_Q_SIZE;
+    }
+    for(int i = 0; i < new_count; i++) mv->rq[i] = new_q[i];
+    mv->rq_head = 0;
+    mv->rq_tail = new_count;
+    mv->rq_count = new_count;
+    return pid;
+}
+
 void mvar_init(void){
     for(int i = 0; i < MAX_MVARS; i++){
         mvar_table[i].in_use = 0;
@@ -91,6 +176,8 @@ void mvar_init(void){
         mvar_table[i].rq_head = 0;
         mvar_table[i].rq_tail = 0;
         mvar_table[i].rq_count = 0;
+        mvar_table[i].wq_consecutive = 0;
+        mvar_table[i].rq_consecutive = 0;
     }
 }
 
@@ -120,6 +207,8 @@ int64_t mvar_create(const char *name){
     mv->value = 0;
     mv->wq_head = mv->wq_tail = mv->wq_count = 0;
     mv->rq_head = mv->rq_tail = mv->rq_count = 0;
+    mv->wq_consecutive = 0;
+    mv->rq_consecutive = 0;
     mv->in_use = 1;
     return 1;
 }
@@ -141,7 +230,7 @@ int64_t mvar_put(const char *name, char value){
         mv->value = value;
         mv->state = MVAR_FULL;
         if(mv->rq_count > 0){
-            uint64_t pid = rq_pop(mv);
+            uint64_t pid = rq_pop_highest(mv);
             process_unblock(pid);
         }
         return 0;
@@ -173,12 +262,7 @@ int64_t mvar_take(const char *name){
         char val = mv->value;
         mv->state = MVAR_EMPTY;
         if(mv->wq_count > 0){
-            uint64_t pid = wq_pop(mv);
-            /* El escritor despertado ejecutara su put en su proximo turno.
-             * Pero hay una optimizacion: podemos pasarle el valor directamente
-             * para evitar un context switch extra. Sin embargo, como el escritor
-             * podria haber sido matado, es mas seguro dejar que haga su propia
-             * llamada a mvar_put. Dejamos que despierte y reintente. */
+            uint64_t pid = wq_pop_highest(mv);
             process_unblock(pid);
         }
         return (int64_t)(unsigned char)val;

@@ -92,21 +92,38 @@ PCB* scheduler_next_ready(void){
         return NULL;
     }
 
-    /* Pasada 1: preferir foreground */
+    /* Encontrar la prioridad efectiva mas alta entre procesos READY.
+       Los procesos foreground reciben +1 de boost para selección. */
+    int highest_eff = -1;
+    for(int i = 0; i < queue_size; i++){
+        if(run_queue[i]->state == PROCESS_READY){
+            int eff = run_queue[i]->priority + (run_queue[i]->foreground ? 1 : 0);
+            if(eff > highest_eff){
+                highest_eff = eff;
+            }
+        }
+    }
+    if(highest_eff < 0) return NULL;
+
+    /* Pasada 1: preferir foreground con prioridad efectiva == highest_eff */
     for(int i = 0; i < queue_size; i++){
         queue_idx = (queue_idx + 1) % queue_size;
         PCB* c = run_queue[queue_idx];
-        if(c->state == PROCESS_READY && c->foreground){
+        if(c->state == PROCESS_READY && c->foreground &&
+           c->priority + 1 == highest_eff){
             return c;
         }
     }
 
-    /* Pasada 2: fallback a cualquier READY */
+    /* Pasada 2: cualquier READY con prioridad efectiva == highest_eff */
     for(int i = 0; i < queue_size; i++){
         queue_idx = (queue_idx + 1) % queue_size;
         PCB* c = run_queue[queue_idx];
         if(c->state == PROCESS_READY){
-            return c;
+            int eff = c->priority + (c->foreground ? 1 : 0);
+            if(eff == highest_eff){
+                return c;
+            }
         }
     }
 
