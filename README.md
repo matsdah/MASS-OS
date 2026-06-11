@@ -152,20 +152,17 @@ filter | cat           # filtrar vocales de stdin
 
 ## Estado de implementacion
 
-- **Comandos core como procesos reales**: `mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`, `wc`, `filter`, `mvar`.
+- **Comandos como procesos reales**: `mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`, `wc`, `filter`, `mvar`.
 - **Tests como procesos reales**: `test_mm`, `test_processes`, `test_prio`, `test_sync`, `test_named_pipe`.
-- **Built-ins heredados de Arqui**: `clear`, `ps`, `printTime`, `printDate`, `registers`, `testDiv0`, `invOp`, `playBeep`.
+- **Built-ins heredados de Arquitectura de Computadoras**: `clear`, `ps`, `printTime`, `printDate`, `registers`, `testDiv0`, `invOp`, `playBeep`.
 
 ---
 
 ## Requerimientos faltantes o parcialmente implementados
 
-- No se implemento `fork`/`execve`; los procesos se crean mediante `sys_create_process` con una tabla de funciones registradas (`registry[]`).
-- No hay paginacion / MMU; todo el userland corre en un unico flat binary en `0x400000`.
-- El scheduler general usa Round-Robin con prioridades fijas (1–5) sin aging. El MVar implementa anti-starvation via cooldown para evitar bloqueo de escritores de baja prioridad.
+- El scheduler usa Round-Robin con prioridades fijas (1–5). El MVar implementa anti-starvation via cooldown para evitar bloqueo de escritores de baja prioridad.
 - `test_sync` acepta 2 parametros (`<n> <use_sem>`) en lugar de los 3 del enunciado (`<pairs> <increments> <use_sem>`); la cantidad de pares esta hardcodeada en 2.
-- El nombre del test de procesos es `test_processes` en lugar de `test_proc` (enunciado).
-- Los comandos `clear`, `ps`, `printTime`, `printDate`, `registers`, `testDiv0`, `invOp`, `playBeep` siguen siendo built-ins (no procesos de usuario).
+- Los comandos `clear`, `ps`, `printTime`, `printDate`, `registers`, `testDiv0`, `invOp`, `playBeep` son procesos built-ins, no procesos de usuario. Estas funciones pertenecen al trabajo práctico de la materia Arquitecutra de Computadoras, y fue aprobado por el profesor en las 'Office Hours'.
 
 ---
 
