@@ -47,11 +47,21 @@ static int64_t test_prio_internal(uint64_t argc, char *argv[]){
     char* ztm_argv[] = {0};
     uint64_t i;
 
-    if(argc != 1){
+    if(argc != 1 || !argv[0] || argv[0][0] == '\0'){
+        shellPrintString("test_prio: uso: test_prio <max_value>\n");
         return -1;
     }
 
+    /* Validar que argv[0] sea un numero positivo. */
+    for(const char *p = argv[0]; *p; p++){
+        if(*p < '0' || *p > '9'){
+            shellPrintString("test_prio: max_value debe ser un numero positivo\n");
+            return -1;
+        }
+    }
+
     if((max_value = (uint64_t)satoi(argv[0])) == 0){
+        shellPrintString("test_prio: max_value debe ser un numero positivo\n");
         return -1;
     }
 
@@ -99,13 +109,26 @@ static int64_t test_prio_internal(uint64_t argc, char *argv[]){
 
     return 0;
 }
-
 /* Wrapper de shell: test_prio <max_value> */
 void test_prio_cmd(void) {
     const char* args = cmd_args();
     if(!args){
         shellPrintString("uso: test_prio <max_value>\n");
         return;
+    }
+
+    /* El argumento es <max_value>. Si es vacio o no numerico, rechazar. */
+    if(args[0] == '\0'){
+        shellPrintString("uso: test_prio <max_value>\n");
+        return;
+    }
+
+    char *p = (char *)args;
+    for(; *p; p++){
+        if(*p < '0' || *p > '9'){
+            shellPrintString("test_prio: max_value debe ser un numero positivo\n");
+            return;
+        }
     }
 
     char* argv[1] = {(char *)args};
