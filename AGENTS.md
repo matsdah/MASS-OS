@@ -68,7 +68,7 @@ Run these **inside the running OS shell**. They must work as both foreground and
 
 - **Zero `-Wall` warnings.** Kernel and userland compile with `-Wall -Wextra -Werror -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wformat -Wstrict-prototypes -Wno-unused-parameter -ffreestanding -nostdlib -mno-red-zone -fno-common -fno-pie -fno-exceptions -fno-asynchronous-unwind-tables -mno-mmx -mno-sse -mno-sse2 -fno-builtin-malloc -fno-builtin-free -fno-builtin-realloc -std=c99`.
 - **No busy waiting** except where explicitly allowed (`loop` command, `test_sync` without semaphores).
-- **No deadlocks, no race conditions.** Semaphore value updates are protected by a spinlock acquired via `atomic_xchg` (test-and-set) — see `Kernel/asm/libasm.asm` and `Kernel/c/semaphore/semaphore.c`. MVar still modifies `state`/`value` without atomics (pending).
+- **No deadlocks, no race conditions.** Semaphore and MVar state/value updates are protected by a spinlock acquired via `atomic_xchg` (test-and-set) — see `Kernel/asm/libasm.asm`, `Kernel/c/semaphore/semaphore.c`, and `Kernel/c/syscall/mvar.c`.
 - **No binaries in repo** — `.o`, `.bin`, `.img`, `.qcow2`, `.vmdk` are already in `.gitignore`.
 - **Spanish** for code, comments, and commit messages.
 - `make`, `make all`, and `make <memory_manager>` are reserved **exclusively** for compilation inside the Docker image. Other tasks (run QEMU, pull image, etc.) must use the provided scripts.
@@ -95,7 +95,11 @@ These bugs were fixed and their invariants **must not be regressed**:
 
 ## Critical invariants (MVar / scheduler priority)
 
-- `mvar_cleanup_for_process` must wake blocked processes after removing a killed PID — if MVar is EMPTY and `wq_count > 0`, pop and unblock a writer; if FULL and `rq_count > 0`, pop and unblock a reader. Without this, killing a blocked process deadlocks the MVar. (`Kernel/c/syscall/mvar.c`)
+- `mvar_put`/`mvar_take`/`mvar_destroy`/`mvar_cleanup_for_process` protect the section (state + value + queues) with `mvar_lock`/`mvar_unlock` (`atomic_xchg`). The unlock must happen **before** `process_unblock` or `cur->state = BLOCKED; force_switch = 1`: these only set state + force_switch; the context switch occurs at `iretq`. Unlocking after would leave the lock held by a descheduled process → deadlock. (`Kernel/c/syscall/mvar.c`)
+- MVar uses **handoff** instead of a retry loop: when a `put` finds a reader waiting, it writes the value directly into `reader->rsp[14]` (the saved RAX slot) and unblocks the reader — the reader wakes with the value in RAX, no retry. When a `take` finds a writer waiting, it reads the current value and writes the writer's pending value (stored in `mvar_q_entry.value`) into `mv->value` — the writer wakes with 0 (saved by the ISR), no retry. This eliminates the old `-2` return code and the `sys_yield()` + retry loop in userland. (`Kernel/c/syscall/mvar.c`, `Userland/c/commands/mvar.c`)
+- The pending value of a blocked writer lives in `mvar_q_entry.value` (the queue entry), **not** in the PCB. The queues `wq[]`/`rq[]` are arrays of `mvar_q_entry {pid, value}`. (`Kernel/c/syscall/mvar.c`)
+- `mvar_destroy` wakes all blocked processes with `-1` written in their `rsp[14]` (MVar destroyed). (`Kernel/c/syscall/mvar.c`)
+- `mvar_cleanup_for_process` must wake blocked processes after removing a killed PID — if MVar is EMPTY and `wq_count > 0`, pop a writer and do handoff (write its value, set FULL); if FULL and `rq_count > 0`, pop a reader and do handoff (write `mv->value` into `reader->rsp[14]`, set EMPTY). Without this, killing a blocked process deadlocks the MVar. (`Kernel/c/syscall/mvar.c`)
 - `wq_pop_highest` / `rq_pop_highest` use a **cooldown** to prevent starvation: after `priority` consecutive serves of the highest-priority level, the lowest-priority entry gets one turn. Do not replace with pure FIFO or pure priority — both cause bugs (FIFO ignores `nice`; pure priority starves lower-priority writers). (`Kernel/c/syscall/mvar.c`)
 - `scheduler_next_ready` gives foreground processes an **effective +1 priority boost** for selection. Without this, a foreground shell at priority 3 is starved when any background process has priority ≥ 3. (`Kernel/c/scheduler/scheduler.c`)
 

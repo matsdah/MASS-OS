@@ -63,14 +63,12 @@ void mvar_writer(int argc, char *argv[]){
 
     while(1){
         random_busy_wait();
-        int64_t r;
-        while((r = sys_mvar_put(name, letter)) == -2){
-            sys_yield();
-        }
+        int64_t r = sys_mvar_put(name, letter);
         if(r == -1){
             /* MVar destruida o no existe */
             break;
         }
+        /* r == 0: put exitoso (o fue bloqueado y despertado via handoff) */
     }
     sys_exit(0);
 }
@@ -87,10 +85,7 @@ void mvar_reader(int argc, char *argv[]){
 
     while(1){
         random_busy_wait();
-        int64_t r;
-        while((r = sys_mvar_take(name)) == -2){
-            sys_yield();
-        }
+        int64_t r = sys_mvar_take(name);
         if(r == -1){
             /* MVar destruida o no existe */
             break;
