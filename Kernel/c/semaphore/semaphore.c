@@ -316,17 +316,12 @@ void sem_cleanup_for_process(uint64_t pid){
 
         sem_lock(&s->lock);
 
-        /* 1) Si estaba en la cola de espera: sacarlo y compensar el
-              decremento que hizo sem_wait antes de bloquearlo. */
+        /* 1) ¿Estaba en la cola de espera de este semáforo? */
         int was_queued = queue_remove_pid(s, pid);
-        if(was_queued){
-            s->value++;
-        }
 
         /* 1.5) Si el proceso tenía el semáforo abierto: devolver su referencia de
-               open_count (evita la fuga cuando un proceso muere sin sem_close). Se
-               hace ANTES del bloque held para que el `continue` del wake no lo saltee.
-               open_count==0 deja el slot reutilizable (find_sem lo ignora). */
+               open_count (evita la fuga cuando un proceso muere sin sem_close).
+               Independiente de queued/held. open_count==0 deja el slot reutilizable. */
         if((p->opened_sems >> i) & 1u){
             p->opened_sems &= ~(1u << i);
             if(s->open_count > 0){
@@ -334,10 +329,20 @@ void sem_cleanup_for_process(uint64_t pid){
             }
         }
 
-        /* 2) Si tenía el recurso (bit held): liberarlo y despertar a
-              un waiter transfiriéndole la tenencia. */
-        int held = (p->held_sems >> i) & 1u;
-        if(held){
+        /* 2) queued y held son MUTUAMENTE EXCLUYENTES: un proceso encolado está
+              ESPERANDO el recurso, no lo tiene. Tratarlos por separado (dos value++)
+              sobre-compensa cuando held_sems tiene un bit stale — caso productor/
+              consumidor (MVar): se hace wait sobre un sem y post sobre OTRO, así que
+              sem_post nunca limpia el bit del sem en el que se espera. Resultado:
+              value queda +1 y se rompe el invariante del buffer. */
+        if(was_queued){
+            /* Esperando: compensar el único value-- del sem_wait bloqueante y
+               descartar cualquier bit held stale SIN un segundo value++. */
+            s->value++;
+            p->held_sems &= ~(1u << i);
+        } else if((p->held_sems >> i) & 1u){
+            /* Tenía el recurso (no estaba esperando): liberarlo y despertar a un
+               waiter transfiriéndole la tenencia. */
             p->held_sems &= ~(1u << i);
             s->value++;
             if((s->value <= 0) && (s->wait_count > 0)){
