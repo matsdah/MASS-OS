@@ -63,7 +63,6 @@ Run these **inside the running OS shell**. They must work as both foreground and
 - `test_processes <max_procs>` — process creation/kill loop.
 - `test_prio <target>` — priority scheduler test.
 - `test_sync <n> <use_sem>` — race-condition test; result must be `0` when `use_sem=1`. (`<pairs>` and `<increments>` are hardcoded in the test.)
-- `test_named_pipe` — named pipe IPC test (runs as a child process).
 - `ps` — list processes.
 
 ## Critical constraints

@@ -95,7 +95,6 @@ Al bootear se inicia una shell interactiva.
 | `test_processes <max>` | `max`: cantidad de procesos | Crea, bloquea, desbloquea y mata procesos dummy ciclicamente. Nota: el enunciado lo llama `test_proc`. |
 | `test_prio <target>` | `target`: valor a alcanzar | Crea 3 procesos con distintas prioridades; visualiza diferencias de ejecucion. |
 | `test_sync <n> <sem>` | `n`: iteraciones, `sem`: 0/1 | Test de condiciones de carrera. Resultado esperado `0` si `sem=1`. Nota: el enunciado especifica 3 params pero la cantidad de pares esta hardcodeada en 2. |
-| `test_named_pipe` | — | Test de pipes con nombre (IPC entre escritor y lector). |
 
 ---
 
@@ -153,7 +152,7 @@ filter | cat           # filtrar vocales de stdin
 ## Estado de implementacion
 
 - **Comandos como procesos reales**: `mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`, `wc`, `filter`, `mvar`.
-- **Tests como procesos reales**: `test_mm`, `test_processes`, `test_prio`, `test_sync`, `test_named_pipe`.
+- **Tests como procesos reales**: `test_mm`, `test_processes`, `test_prio`, `test_sync`.
 - **Built-ins heredados de Arquitectura de Computadoras**: `clear`, `ps`, `printTime`, `printDate`, `registers`, `testDiv0`, `invOp`, `playBeep`.
 
 ---

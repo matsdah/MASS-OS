@@ -28,11 +28,6 @@ int64_t  test_processes_entry(int argc, char *argv[]);
 int64_t  test_prio_entry(int argc, char *argv[]);
 int64_t  test_sync_entry(int argc, char *argv[]);
 
-/* Named pipe test */
-void     test_named_pipe_cmd(void);
-int64_t  test_named_pipe_entry(int argc, char *argv[]);
-void     np_writer_entry(int argc, char *argv[]);
-void     np_reader_entry(int argc, char *argv[]);
 int64_t  mem(int argc, char *argv[]);
 int64_t  kill_cmd(int argc, char *argv[]);
 int64_t  nice_cmd(int argc, char *argv[]);

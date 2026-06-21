@@ -34,8 +34,6 @@ static ProcEntry registry[] = {
     {"test_processes", (void *)test_processes_entry},
     {"test_prio", (void *)test_prio_entry},
     {"test_sync", (void *)test_sync_entry},
-    {"np_writer", (void *)np_writer_entry},
-    {"np_reader", (void *)np_reader_entry},
     {"mem", (void *)mem},
     {"kill", (void *)kill_cmd},
     {"nice", (void *)nice_cmd},
@@ -48,7 +46,6 @@ static ProcEntry registry[] = {
     {"mvar_reader", (void *)mvar_reader},
     {"filter", (void *)filter},
     {"help", (void *)help},
-    {"test_named_pipe", (void *)test_named_pipe_entry},
     {0, 0}
 };
 

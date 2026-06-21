@@ -17,7 +17,6 @@ static Command commands[] = {
     {"test_processes", test_processes_cmd},
     {"test_prio", test_prio_cmd},
     {"test_sync", test_sync_cmd},
-    {"test_named_pipe", test_named_pipe_cmd},
     {"ps", ps},
     {0, 0},
 };
@@ -330,8 +329,8 @@ char getchar(void){
    ejecutarse in-process dentro de la shell. */
 static int is_child_command(const char *name){
     static const char *child_cmds[] = {
-        "test_mm", "test_processes", "test_prio", "test_sync", "test_named_pipe",
-        "np_writer", "np_reader", "mem", "kill", "nice", "block", "loop", "sh", "cat", "wc", "mvar", "filter", "help", NULL
+        "test_mm", "test_processes", "test_prio", "test_sync",
+        "mem", "kill", "nice", "block", "loop", "sh", "cat", "wc", "mvar", "filter", "help", NULL
     };
     for(int i = 0; child_cmds[i]; i++)
         if(strcmp(name, child_cmds[i]) == 0)

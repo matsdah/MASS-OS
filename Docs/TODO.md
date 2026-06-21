@@ -57,7 +57,7 @@ Estos leen de `fd[0]` y escriben en `fd[1]`; la shell ya maneja `|` y `sys_pipe_
   - Cleanup al matar: `mvar_cleanup_for_process` remueve el PID de las colas de espera sin alterar el estado EMPTY/FULL.
 
 ### 5. Migrar todos los built-ins a procesos reales
-El enunciado requiere que **todos** los comandos sean procesos; actualmente los tests, `np_writer`/`np_reader`, y los comandos core (`mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`, `wc`, `filter`, `mvar`) ya lo son. Refactorizar la shell (`Userland/c/userlib.c` -> `commands[]` y `processLine`) para que:
+El enunciado requiere que **todos** los comandos sean procesos; actualmente los tests y los comandos core (`mem`, `kill`, `nice`, `block`, `loop`, `sh`, `cat`, `wc`, `filter`, `mvar`) ya lo son. Refactorizar la shell (`Userland/c/userlib.c` -> `commands[]` y `processLine`) para que:
 
 - [ ] Ningun comando se ejecute in-process.
 - [x] `help` (hecho)
@@ -67,7 +67,7 @@ El enunciado requiere que **todos** los comandos sean procesos; actualmente los 
 
 ### 6. Verificacion final
 - [x] Compilar con `-Wall` sin warnings.
-- [ ] `test_mm`, `test_processes`, `test_sync`, `test_prio`, `test_named_pipe` en foreground y background -> sin errores.
+- [ ] `test_mm`, `test_processes`, `test_sync`, `test_prio` en foreground y background -> sin errores.
 - [ ] `test_sync` con semaforos debe dar resultado `0`.
 - [ ] Probar pipes: `cat | wc`, `filter | cat`, etc.
 - [ ] Probar `Ctrl+C` y `Ctrl+D` sobre procesos foreground.

@@ -22,7 +22,6 @@ int64_t help(int argc, char *argv[]) {
     shellPrintString("test_processes <max> [&]  ->   test de procesos. (foreground/background)\n");
     shellPrintString("test_prio <target> [&]    ->   test de prioridades. (foreground/background)\n");
     shellPrintString("test_sync <n> <sem> [&]   ->   test de sincronizacion. (foreground/background)\n");
-    shellPrintString("test_named_pipe           ->   test de pipes con nombre. \n");
     shellPrintString("mem                       ->   muestra estado de la memoria.\n");
     shellPrintString("kill <pid>                ->   termina el proceso indicado.\n");
     shellPrintString("nice <pid> <prio>         ->   cambia prioridad (1-5).\n");
