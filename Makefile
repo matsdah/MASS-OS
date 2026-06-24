@@ -1,41 +1,38 @@
-
 TARGET ?= qemu
+MM     ?= FF
 
-all:  bootloader kernel userland toolchain image
+# Exportamos para que TODOS los sub-makes (Kernel/Image/etc.) hereden la
+# configuración. Sin esto, Kernel/Makefile siempre compilaría con First-Fit
+# aunque se pase MM=BUDDY al make raíz.
+export TARGET
+export MM
+
+all: bootloader kernel userland toolchain image
 
 bootloader:
-	cd Bootloader; make all
+	$(MAKE) -C Bootloader all
 
 kernel:
-	cd Kernel; make all
+	$(MAKE) -C Kernel all
 
 userland:
-	cd Userland; make all
+	$(MAKE) -C Userland all
 
 toolchain:
-	cd Toolchain; make all
+	$(MAKE) -C Toolchain all
 
 image: kernel bootloader userland toolchain
-	$(MAKE) -C Image TARGET=$(TARGET) all
+	$(MAKE) -C Image all
 
-# Convenience targets for explicit images
-image-qemu: TARGET=qemu
-image-qemu: image
-
-image-vbox: TARGET=vbox
-image-vbox: image
-
-image-usb: TARGET=usb
-image-usb: image
-
+# Alias de compatibilidad: `make buddy` = `make MM=BUDDY all`.
 buddy:
 	$(MAKE) MM=BUDDY all
 
 clean:
-	cd Bootloader; make clean
-	cd Image; make clean
-	cd Kernel; make clean
-	cd Toolchain; make clean
-	cd Userland; make clean
+	$(MAKE) -C Bootloader clean
+	$(MAKE) -C Image      clean
+	$(MAKE) -C Kernel     clean
+	$(MAKE) -C Toolchain  clean
+	$(MAKE) -C Userland   clean
 
-.PHONY: bootloader image collections kernel userland toolchain all clean
+.PHONY: all bootloader kernel userland toolchain image buddy clean

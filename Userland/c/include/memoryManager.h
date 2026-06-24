@@ -3,12 +3,14 @@
 
 #include <stdint.h>
 
-/* Estructura para reportar el estado de la memoria. Ambos managers deben usar la misma estructura. */
+/* Estructura para reportar el estado de la memoria. Debe coincidir con la del kernel.
+** Invariante: total == free + used + used_kernel. */
 typedef struct {
-    uint64_t total;         /* Bytes totales administrados. */ 
-    uint64_t used;          /* Bytes actualmente asignados. */
+    uint64_t total;         /* Bytes totales administrados. */
     uint64_t free;          /* Bytes libres. */
-    uint64_t alloc_count;   /* Cantidad de bloques asignados actualmente. */
+    uint64_t used;          /* Bytes asignados solo por usuario (mm_malloc). */
+    uint64_t used_kernel;   /* Bytes asignados solo por kernel (mm_malloc_kernel). */
+    uint64_t alloc_count;   /* Cantidad de bloques asignados actualmente por usuario. */
 } MemStatus;
 
 /* Inicializa el memory manager sobre el bloque [start, start+size) */

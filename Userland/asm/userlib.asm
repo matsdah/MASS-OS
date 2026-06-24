@@ -32,6 +32,13 @@ GLOBAL sys_sem_open
 GLOBAL sys_sem_wait
 GLOBAL sys_sem_post
 GLOBAL sys_sem_close
+GLOBAL sys_pipe
+GLOBAL sys_dup2
+GLOBAL sys_close
+GLOBAL sys_pipe_open
+GLOBAL sys_pipe_setup
+GLOBAL sys_tty_mode
+GLOBAL sys_write_color
 
 section .text
 
@@ -120,6 +127,36 @@ sys_sem_close:
     int 0x80
     ret
 
+sys_pipe:
+    mov rax, 33
+    int 0x80
+    ret
+
+sys_dup2:
+    mov rax, 34
+    int 0x80
+    ret
+
+sys_close:
+    mov rax, 35
+    int 0x80
+    ret
+
+sys_pipe_open:
+    mov rax, 36
+    int 0x80
+    ret
+
+sys_pipe_setup:
+    mov rax, 37
+    int 0x80
+    ret
+
+sys_tty_mode:
+    mov rax, 38
+    int 0x80
+    ret
+
 sys_registers:
 	mov rax, 0
 	int 0x80
@@ -142,6 +179,11 @@ sys_read:
 
 sys_write:
 	mov rax, 4
+	int 0x80
+	ret
+
+sys_write_color:
+	mov rax, 39
 	int 0x80
 	ret
 

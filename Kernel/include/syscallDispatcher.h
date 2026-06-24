@@ -8,7 +8,7 @@ extern void * syscalls[CANT_SYS];
 
 // Syscalls 0-18 (existentes)
 uint64_t sys_write(uint64_t fd, const char * buff, uint64_t count);
-uint64_t sys_read(char * buff, uint64_t count);
+uint64_t sys_read(uint64_t fd, char * buff, uint64_t count);
 uint64_t sys_registers(char * buff);
 void sys_time(uint8_t * buff);
 void sys_date(uint8_t * buff);
@@ -35,7 +35,7 @@ uint64_t sys_getpid(void);
 uint64_t sys_ps(uint64_t buffer, uint64_t max_count);
 void     sys_kill(uint64_t pid);
 void     sys_nice(uint64_t pid, uint64_t new_priority);
-void     sys_block(uint64_t pid);
+int64_t  sys_block(uint64_t pid);
 void     sys_unblock(uint64_t pid);
 void     sys_yield(void);
 int64_t  sys_waitpid(uint64_t pid);
@@ -45,5 +45,22 @@ int64_t  sys_sem_open(const char *name, uint64_t initial_value);
 int64_t  sys_sem_wait(const char *name);
 int64_t  sys_sem_post(const char *name);
 int64_t  sys_sem_close(const char *name);
+
+// Syscalls 33-35 (pipes)
+int64_t  sys_pipe(uint64_t fd_array);
+int64_t  sys_dup2(uint64_t old_fd, uint64_t new_fd);
+int64_t  sys_close(uint64_t fd);
+
+// Syscall 36 (named pipe)
+int64_t  sys_pipe_open(uint64_t name, uint64_t fd_array);
+
+// Syscall 37 (pipe setup para pipes entre comandos)
+int64_t  sys_pipe_setup(uint64_t pid, uint64_t stdio_fd, uint64_t target);
+
+// Syscall 38 (modo de terminal)
+int64_t  sys_tty_mode(uint64_t mode);
+
+// Syscall 39 (escritura con color)
+uint64_t sys_write_color(uint64_t fd, const char *buff, uint64_t count, uint32_t color);
 
 #endif

@@ -28,6 +28,10 @@ void scheduler_start_asm(uint64_t* rsp);
 /* Agrega un proceso a la cola de ejecución. */
 void scheduler_add(PCB* p);
 
+/* Registra el proceso idle: se devuelve como fallback en scheduler_next_ready
+   cuando no hay ningun otro proceso READY. No vive en la run_queue. */
+void scheduler_set_idle(PCB* p);
+
 /* Elimina un proceso de la cola de ejecución. */
 void scheduler_remove(PCB* p);
 

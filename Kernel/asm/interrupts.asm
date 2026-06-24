@@ -247,6 +247,16 @@ _irq01Handler:
 	call    irqDispatcher
 	mov     al, 20h
 	out     20h, al
+
+	cmp     qword [force_switch], 0
+	je      .no_yield
+
+	mov     qword [force_switch], 0
+	mov     rdi, rsp
+	call    scheduler_yield_impl
+	mov     rsp, rax
+
+.no_yield:
 	popState
 	iretq
 
@@ -281,7 +291,7 @@ _exception6Handler:
 _irq128Handler:
 	pushState
 
-	cmp rax, 29
+	cmp rax, 40                 ; CANT_SYS = 40 (índices 0..39 válidos)
 	jge .invalid_syscall
 
 	call [syscalls + rax * 8]

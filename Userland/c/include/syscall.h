@@ -12,6 +12,7 @@
 
 int64_t my_getpid(void);
 int64_t my_create_process(char *name, uint64_t argc, char *argv[]);
+int64_t my_create_process_fg(char *name, uint64_t argc, char *argv[], uint8_t fg);
 int64_t my_nice(uint64_t pid, uint64_t newPrio);
 int64_t my_kill(uint64_t pid);
 int64_t my_block(uint64_t pid);
@@ -23,5 +24,11 @@ int64_t my_sem_open(char *name, uint64_t initialValue);
 int64_t my_sem_wait(char *name);
 int64_t my_sem_post(char *name);
 int64_t my_sem_close(char *name);
+
+int64_t my_pipe_open(char *name, int fds[2]);
+int64_t my_pipe_setup(uint64_t pid, uint64_t stdio_fd, uint64_t target);
+
+/* Syscall raw para escritura con color */
+uint64_t sys_write_color(uint64_t fd, const char *buf, uint64_t count, uint32_t color);
 
 #endif

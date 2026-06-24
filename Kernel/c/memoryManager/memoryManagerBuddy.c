@@ -108,6 +108,7 @@ void mm_init(void *start, uint64_t size){
             FreeNode *block = (FreeNode *)((uintptr_t)start + offset);
             block->hdr.order = (uint8_t)order;
             block->hdr.is_free = 1;
+            block->hdr.is_kernel = 0;
             block->next = free_lists[order_idx(order)];
             free_lists[order_idx(order)] = block;
             offset += block_size;
@@ -209,26 +210,38 @@ void mm_free(void *ptr){
 }
 
 
-/* Devuelve el estado actual de las memorias reservadas en el bloque status, sirve para chequeos */
+/* Devuelve el estado actual del heap. Recorre linealmente todos los bloques
+** (libres y asignados) usando el campo `order` del header como salto, y
+** clasifica cada uno en free / used (USER) / used_kernel (KERNEL).
+** Invariante: total == free + used + used_kernel. */
 void mm_status(MemStatus *status){
     if(status == NULL || heap_base == NULL){
         return;
     }
 
     uint64_t free_bytes = 0;
+    uint64_t used_bytes = 0;
+    uint64_t used_kernel_bytes = 0;
 
-    for(int i = 0; i < ORDERS; i++){
-        uint64_t block_size = (uint64_t)1 << (MIN_ORDER + i);
-        FreeNode *cur = free_lists[i];
+    uintptr_t off = 0;
+    while(off < heap_total){
+        FreeNode *b = (FreeNode *)((uintptr_t)heap_base + off);
+        uint64_t bsz = (uint64_t)1 << b->hdr.order;
 
-        while(cur != NULL){
-            free_bytes += block_size;
-            cur = cur->next;
+        if(b->hdr.is_free){
+            free_bytes += bsz;
+        }else if(b->hdr.is_kernel){
+            used_kernel_bytes += bsz;
+        }else{
+            used_bytes += bsz;
         }
+
+        off += bsz;
     }
 
     status->total = heap_total;
     status->free = free_bytes;
-    status->used = heap_total - free_bytes;
+    status->used = used_bytes;
+    status->used_kernel = used_kernel_bytes;
     status->alloc_count = alloc_count;
 }

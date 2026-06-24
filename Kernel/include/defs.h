@@ -17,7 +17,9 @@
 
 #define MIN_CHAR 0
 #define MAX_CHAR 256
-#define CANT_SYS 33
+#define CANT_SYS 40
+#define TTY_RAW   0
+#define TTY_COOKED 1
 #define STDOUT 1
 #define STDERR 2
 #define TEXT_SIZE 1

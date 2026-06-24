@@ -25,7 +25,7 @@ $(error Unknown TARGET '$(TARGET)'; use qemu|vbox|usb)
 endif
 
 $(KERNEL):
-	cd ../Kernel; make
+	$(MAKE) -C ../Kernel
 
 $(MP):
 	$(MAKE) -C ../Toolchain all

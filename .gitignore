@@ -14,8 +14,6 @@
 
 #Docs
 *.pdf
-
-.gemini/
 gha-creds-*.json
 
 #ide

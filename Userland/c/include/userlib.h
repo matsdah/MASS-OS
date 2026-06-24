@@ -1,5 +1,6 @@
 // API userland: wrappers de syscalls y utilitarios minimos.
-// sys_read es NO bloqueante en nivel bajo; getchar() bloquea.
+// sys_read(fd, buf, count): retorna READ_BLOCKED (-1) si bloquea, 0 si EOF, >0 si leyo bytes.
+// getchar() bloquea hasta que haya una tecla disponible.
 // Redraw buffer registra salida para re-render al cambiar tamaño de fuente.
 #ifndef USERLIB_H
 #define USERLIB_H
@@ -12,7 +13,6 @@
 #define REGSBUFF 500
 #define REDRAW_BUFF 4096
 #define KB 1024
-#define BM_BUFF 20
 #define NOTE_C4  262
 #define NOTE_CS4 277
 #define NOTE_D4  294
@@ -58,7 +58,7 @@ void redraw_append_char(char c, uint64_t fd);
 
 // ─── Syscalls de IO ───────────────────────────────────────────────────────────
 uint64_t sys_write(uint64_t fd, const char * buff, uint64_t count);
-uint64_t sys_read(char * buff, uint64_t count);
+uint64_t sys_read(uint64_t fd, char * buff, uint64_t count);
 uint64_t sys_registers(char * buff);
 void sys_time(uint8_t * buff);
 void sys_date(uint8_t * buff);
@@ -87,7 +87,7 @@ uint64_t sys_getpid(void);
 uint64_t sys_ps(ProcessInfo *buffer, uint64_t max_count);
 void     sys_kill(uint64_t pid);
 void     sys_nice(uint64_t pid, uint64_t new_priority);
-void     sys_block(uint64_t pid);
+int64_t  sys_block(uint64_t pid);
 void     sys_unblock(uint64_t pid);
 void     sys_yield(void);
 int64_t  sys_waitpid(uint64_t pid);
@@ -95,6 +95,12 @@ int64_t  sys_sem_open(const char *name, uint64_t initial_value);
 int64_t  sys_sem_wait(const char *name);
 int64_t  sys_sem_post(const char *name);
 int64_t  sys_sem_close(const char *name);
+int64_t  sys_pipe(int fds[2]);
+int64_t  sys_dup2(uint64_t old_fd, uint64_t new_fd);
+int64_t  sys_pipe_open(const char *name, int fds[2]);
+int64_t  sys_close(uint64_t fd);
+int64_t  sys_pipe_setup(uint64_t pid, uint64_t stdio_fd, uint64_t target);
+int64_t  sys_tty_mode(int mode);
 
 // ─── Utilitarios ─────────────────────────────────────────────────────────────
 uint64_t putchar(char c);
@@ -110,7 +116,6 @@ void gen_invalid_opcode(void);
 const char *cmd_args(void);
 
 // ─── Comandos de shell ────────────────────────────────────────────────────────
-void help(void);
 void clear(void);
 void registers(void);
 void divideByZero(void);
@@ -123,10 +128,6 @@ void printTimeAndDate(uint8_t* buff, char separator);
 void shellIncreaseFontSize(void);
 void shellDecreaseFontSize(void);
 void redrawFont(void);
-void bmMEM(void);
-void bmCPU(void);
-void bmFPS(void);
-void bmKEY(void);
 void ps(void);
 
 #endif

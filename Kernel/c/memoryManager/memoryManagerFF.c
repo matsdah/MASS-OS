@@ -27,6 +27,7 @@ void mm_init(void *start, uint64_t size){
     heap_start = (MemBlock *)start;
     heap_start->size = size - sizeof(MemBlock);
     heap_start->is_free = 1;
+    heap_start->is_kernel = 0;
     heap_start->next = NULL;
 }
 
@@ -100,27 +101,33 @@ void mm_free(void *ptr){
     }
 }
 
+/* Recorre la lista enlazada de bloques y clasifica cada uno en free / used (USER) /
+** used_kernel (KERNEL). Cada bloque aporta su tamano completo (payload + header)
+** al total, de modo que la invariante total == free + used + used_kernel se mantenga. */
 void mm_status(MemStatus* status){
     if(status == NULL || heap_start == NULL){
         return;
     }
 
     status->total = 0;
-    status->used = 0;
     status->free = 0;
+    status->used = 0;
+    status->used_kernel = 0;
     status->alloc_count = 0;
 
     MemBlock* block = heap_start;
 
     while(block != NULL){
-        status->total += block->size;
+        uint64_t bsz = block->size + sizeof(MemBlock);
+        status->total += bsz;
 
         if(block->is_free){
-            status->free += block->size;
+            status->free += bsz;
+        }else if(block->is_kernel){
+            status->used_kernel += bsz;
         }else{
-            status->used += block->size;
-            if(!block->is_kernel)
-                status->alloc_count++;
+            status->used += bsz;
+            status->alloc_count++;
         }
         /* Avanzo en el heap hacia el siguiente bloque. */
         block = block->next;

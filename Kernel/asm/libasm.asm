@@ -6,6 +6,7 @@ GLOBAL getMonth
 GLOBAL getYear
 GLOBAL inb
 GLOBAL outb
+GLOBAL atomic_xchg
 
 section .text
 	
@@ -64,4 +65,12 @@ inb:
 	in al, dx 
 
 	pop rbp
+	ret
+
+; uint64_t atomic_xchg(volatile uint64_t *ptr, uint64_t newval)
+; Intercambia atómicamente *ptr <-> newval; retorna el valor viejo.
+; xchg con operando de memoria tiene LOCK implícito en x86.
+atomic_xchg:
+	mov rax, rsi          ; rax = newval
+	xchg rax, [rdi]       ; atomic: rax <- old [rdi], [rdi] <- newval
 	ret

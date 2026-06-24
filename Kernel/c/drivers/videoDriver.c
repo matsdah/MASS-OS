@@ -53,12 +53,12 @@ static void v_fillRectangle(uint64_t x0, uint64_t y0, uint64_t x1, uint64_t y1, 
 static void drawFilledRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height, uint32_t color);
 
 // Ancho en píxeles del modo actual
-uint16_t getScreenWidth(){ 
+uint16_t getScreenWidth(void){ 
     return vbe_mode_info->width;
 }
 
 // Alto en píxeles del modo actual
-uint16_t getScreenHeight(){
+uint16_t getScreenHeight(void){
     return vbe_mode_info->height;
 }
 
@@ -77,7 +77,7 @@ int validPosition(uint64_t x,  uint64_t y){
 
 /* FUNCIONES DE MODO TEXTO. */
 
-void increaseFontSize(){
+void increaseFontSize(void){
     if (defaultTextSize < MAX_FONT_SIZE){
         defaultTextSize++;
     }
@@ -85,7 +85,7 @@ void increaseFontSize(){
     updateCursor();
 }
 
-void decreaseFontSize(){
+void decreaseFontSize(void){
     if(defaultTextSize > 1){
         defaultTextSize--;
     }
@@ -110,7 +110,7 @@ void putPixel(uint32_t hexColor, uint64_t x, uint64_t y){
 }
 
 // Desplaza la pantalla una línea hacia arriba
-void scroll(){
+void scroll(void){
     uint64_t lineHeight = defaultTextSize * FONT_HEIGHT;
     uint8_t * framebuffer = (uint8_t *)(uintptr_t) vbe_mode_info->framebuffer;
     
@@ -127,7 +127,7 @@ void scroll(){
 }
 
 // Salta a la línea siguiente con scroll automático
-void newLine(){
+void newLine(void){
     currentX = 0;
 
     uint64_t stepY = (uint64_t)defaultTextSize * FONT_HEIGHT;

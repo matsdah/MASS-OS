@@ -12,6 +12,12 @@ void kbd_set_waiting(struct PCB *p) {
     kbd_waiting_process = p;
 }
 
+void kbd_clear_waiting(struct PCB *p) {
+    if(kbd_waiting_process == p){
+        kbd_waiting_process = NULL;
+    }
+}
+
 char kbd_min[KBD_LENGTH] = {
     0,  27, '1','2','3','4','5','6','7','8','9','0','-','=', '\b', // backspace
     '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n',     //tab y enter
@@ -35,11 +41,30 @@ static char buff[BUFF_LENGTH];
 static char registersBuff[REGISTERS_BUFFER_SIZE];
 static int shift = 0;
 static int caps = 0;
+static int ctrl = 0;
 static int buff_size = 0;
 static int start_index = 0;
 static int end_index = 0;
 static int boolRegisters = 0;
 static void storeSnapshot(void);
+
+/* Estado de terminal cooked mode */
+int tty_mode = TTY_RAW;
+char tty_line[256];
+int tty_line_len = 0;
+int tty_line_ready = 0;
+int tty_eof = 0;
+
+int tty_get_mode(void){
+    return tty_mode;
+}
+
+void tty_set_mode(int mode){
+    tty_mode = mode;
+    tty_line_len = 0;
+    tty_line_ready = 0;
+    tty_eof = 0;
+}
 
 // Inserta un caracter en el buffer circular de teclado
 void writeBuff(unsigned char c){
@@ -90,22 +115,69 @@ void handlePressedKey(void){
         shift = 1;
     } else if(scancode == (L_SHIFT | BREAK_CODE) || scancode == (R_SHIFT | BREAK_CODE)){
         shift = 0;
-    }else if(scancode == L_ARROW || scancode == R_ARROW || scancode == UP_ARROW || scancode == DOWN_ARROW || scancode == 0 || scancode > BREAK_CODE){
-        return;
     } else if(scancode == L_CONTROL){
+        ctrl = 1;
+        return;
+    } else if(scancode == (L_CONTROL | BREAK_CODE)){
+        ctrl = 0;
+        return;
+    } else if(scancode == 0x3B){  // F1: snapshot de registros
         storeSnapshot();
         boolRegisters = 1;
+        return;
+    } else if(scancode == L_ARROW || scancode == R_ARROW || scancode == UP_ARROW || scancode == DOWN_ARROW || scancode == 0 || scancode > BREAK_CODE){
+        return;
+    } else if(ctrl && scancode == 0x2E){  // Ctrl + C: matar foreground
+        process_kill_foreground();
+        return;
+    } else if(ctrl && scancode == 0x20){  // Ctrl + D: enviar EOF
+        if(tty_mode == TTY_COOKED && kbd_waiting_process != NULL){
+            if(tty_line_len > 0){
+                tty_line_ready = 1;
+            } else {
+                tty_eof = 1;
+            }
+            kbd_waiting_process->state = PROCESS_READY;
+            kbd_waiting_process = NULL;
+        } else {
+            writeBuff(0x04);
+            if(kbd_waiting_process != NULL){
+                kbd_waiting_process->state = PROCESS_READY;
+                kbd_waiting_process = NULL;
+            }
+        }
         return;
     } else if(scancode == CAPS_LOCK){
         caps = !caps;
     } else if(!(scancode & BREAK_CODE)){
         char c = kbd_manager[(shift + caps) % 2][scancode];
-        writeBuff(c);
 
-        // Despertar al proceso que esperaba input
-        if (kbd_waiting_process != NULL) {
-            kbd_waiting_process->state = PROCESS_READY;
-            kbd_waiting_process = NULL;
+        if(tty_mode == TTY_COOKED && kbd_waiting_process != NULL){
+            if(c == '\n'){
+                videoPutChar(c, 0xFFFFFF);
+                tty_line[tty_line_len++] = c;
+                tty_line_ready = 1;
+                kbd_waiting_process->state = PROCESS_READY;
+                kbd_waiting_process = NULL;
+            } else if(c == '\b'){
+                if(tty_line_len > 0){
+                    tty_line_len--;
+                    videoPutChar('\b', 0xFFFFFF);
+                }
+            } else {
+                if(tty_line_len < (int)sizeof(tty_line) - 1){
+                    videoPutChar(c, 0xFFFFFF);
+                    tty_line[tty_line_len++] = c;
+                }
+            }
+        } else {
+            writeBuff(c);
+
+            // Despertar al proceso que esperaba input
+            if(kbd_waiting_process != NULL){
+                kbd_waiting_process->state = PROCESS_READY;
+                kbd_waiting_process = NULL;
+            }
         }
     }
 }
@@ -126,7 +198,7 @@ uint64_t copyRegistersBuffer(char * buff){
 }
 
 // Serializa los registros guardados por la ISR en formato legible
-void storeSnapshot(){
+void storeSnapshot(void){
     const char * regs[] = {"RAX: 0x", "RBX: 0x", "RCX: 0x", "RDX: 0x", "RBP: 0x", "RDI: 0x", "RSI: 0x",  
      "R8: 0x", "R9: 0x", "R10: 0x", "R11: 0x", "R12: 0x", "R13: 0x", "R14: 0x", "R15: 0x", "RIP: 0x", "CS: 0x", "RFLAGS: 0x", "RSP: 0x", "SS: 0x", 0};
 

@@ -25,8 +25,10 @@ typedef void (*ProcessEntry)(int argc, char **argv);
 typedef struct PCB{
     uint64_t pid;               /* PID del proceso */
     char name[MAX_NAME_LEN];    /* Nombre del proceso. */
+    ProcessEntry entry;         /* Punto de entrada real del proceso. */
     uint8_t priority;           /* Prioridad del proceso (1-5). */
     uint8_t remaining_quanta;   /* Cuanta restante en el quantum actual. */
+    uint32_t wait_ticks;        /* Ticks acumulados esperando CPU (aging). */
     ProcessState state;         /* Estado del proceso. */
     uint64_t *rsp;              /* RSP guardado (valido cuando no esta RUNNING) */
     uint64_t *stack_base;       /* base del stack mm_malloc (para liberar) */
@@ -37,6 +39,8 @@ typedef struct PCB{
     int argc;                   /* Cantidad de argumentos (para pasar a la función entry) */
     char **argv;                /* Argumentos (para pasar a la función entry) */
     int retval;                 /* Valor de retorno del proceso (para que el padre lo lea en waitpid) */
+    uint32_t held_sems;         /* Bitmap: bit i = proceso tiene recurso de sem_table[i] */
+    uint32_t opened_sems;       /* Bitmap: bit i = proceso tiene abierto sem_table[i] (open_count) */
 } PCB;
 
 /* Vista userland de un proceso diferenciado de Kernel. */
@@ -56,10 +60,12 @@ PCB* process_get(uint64_t pid);
 PCB* process_current(void);
 void process_set_current(PCB *p);
 void process_kill(uint64_t pid);
+void process_kill_foreground(void);
 void process_block(uint64_t pid);
 void process_unblock(uint64_t pid);
 void process_nice(uint64_t pid, uint8_t new_priority);
 int process_waitpid(uint64_t pid);
 uint64_t process_ps(ProcessInfo *buf, uint64_t max);
+void process_pipe_setup(uint64_t pid, int stdio_fd, int target);
 
 #endif
